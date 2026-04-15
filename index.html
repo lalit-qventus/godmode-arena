@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --fg: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #334155;
+      --x-color: #38bdf8;
+      --o-color: #f472b6;
+      --accent: #22c55e;
+      --accent-hover: #16a34a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      gap: 1.5rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+      letter-spacing: 0.05em;
+      color: var(--fg);
+    }
+
+    #status {
+      font-size: 1.25rem;
+      font-weight: 600;
+      min-height: 1.75rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    #status.win-x { color: var(--x-color); }
+    #status.win-o { color: var(--o-color); }
+    #status.draw  { color: var(--muted); }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 6rem);
+      grid-template-rows: repeat(3, 6rem);
+      gap: 0;
+      background: var(--border);
+      border: 2px solid var(--border);
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+
+    .cell {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      font-size: 3rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s ease;
+      color: var(--fg);
+      font-family: inherit;
+      padding: 0;
+    }
+
+    .cell:hover:not(:disabled) {
+      background: #273449;
+    }
+
+    .cell:disabled {
+      cursor: not-allowed;
+    }
+
+    .cell.x { color: var(--x-color); }
+    .cell.o { color: var(--o-color); }
+
+    #reset {
+      background: var(--accent);
+      color: #04110a;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease;
+    }
+
+    #reset:hover { background: var(--accent-hover); }
+    #reset:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Tic-Tac-Toe</h1>
+    <div id="status" aria-live="polite">Player X's turn</div>
+    <div id="board" role="grid" aria-label="Tic-tac-toe board">
+      <button class="cell" data-index="0" aria-label="Cell 1"></button>
+      <button class="cell" data-index="1" aria-label="Cell 2"></button>
+      <button class="cell" data-index="2" aria-label="Cell 3"></button>
+      <button class="cell" data-index="3" aria-label="Cell 4"></button>
+      <button class="cell" data-index="4" aria-label="Cell 5"></button>
+      <button class="cell" data-index="5" aria-label="Cell 6"></button>
+      <button class="cell" data-index="6" aria-label="Cell 7"></button>
+      <button class="cell" data-index="7" aria-label="Cell 8"></button>
+      <button class="cell" data-index="8" aria-label="Cell 9"></button>
+    </div>
+    <button id="reset" type="button">Reset</button>
+  </main>
+
+  <script>
+    (function () {
+      const WIN_LINES = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6],
+      ];
+
+      const board_cells = Array.from(document.querySelectorAll('.cell'));
+      const status_element = document.getElementById('status');
+      const reset_button = document.getElementById('reset');
+
+      let board_state = Array(9).fill('');
+      let current_player = 'X';
+      let game_over = false;
+
+      function render_status(message, css_class) {
+        status_element.textContent = message;
+        status_element.classList.remove('win-x', 'win-o', 'draw');
+        if (css_class) status_element.classList.add(css_class);
+      }
+
+      function detect_winner() {
+        for (const [a, b, c] of WIN_LINES) {
+          if (board_state[a] && board_state[a] === board_state[b] && board_state[a] === board_state[c]) {
+            return board_state[a];
+          }
+        }
+        return null;
+      }
+
+      function is_draw() {
+        return board_state.every(cell => cell !== '');
+      }
+
+      function handle_cell_click(event) {
+        if (game_over) return;
+        const cell_index = Number(event.currentTarget.dataset.index);
+        if (board_state[cell_index] !== '') return;
+
+        board_state[cell_index] = current_player;
+        event.currentTarget.textContent = current_player;
+        event.currentTarget.classList.add(current_player.toLowerCase());
+
+        const winning_player = detect_winner();
+        if (winning_player) {
+          game_over = true;
+          render_status(`Player ${winning_player} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
+          disable_remaining_cells();
+          return;
+        }
+
+        if (is_draw()) {
+          game_over = true;
+          render_status("Draw", 'draw');
+          return;
+        }
+
+        current_player = current_player === 'X' ? 'O' : 'X';
+        render_status(`Player ${current_player}'s turn`);
+      }
+
+      function disable_remaining_cells() {
+        board_cells.forEach(cell => { cell.disabled = true; });
+      }
+
+      function reset_game() {
+        board_state = Array(9).fill('');
+        current_player = 'X';
+        game_over = false;
+        board_cells.forEach(cell => {
+          cell.textContent = '';
+          cell.classList.remove('x', 'o');
+          cell.disabled = false;
+        });
+        render_status("Player X's turn");
+      }
+
+      board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
+      reset_button.addEventListener('click', reset_game);
+    })();
+  </script>
+</body>
+</html>
