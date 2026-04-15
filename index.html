@@ -362,9 +362,17 @@
       outline: 2px solid var(--fg);
       outline-offset: 2px;
     }
+
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
+  <canvas id="confetti-canvas"></canvas>
   <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
   <div id="player-names-modal">
     <div class="modal-content">
@@ -410,6 +418,117 @@
 
   <script>
     (function () {
+      // Confetti animation system
+      const confetti_canvas = document.getElementById('confetti-canvas');
+      const confetti_ctx = confetti_canvas.getContext('2d');
+      let confetti_animation_id = null;
+      let confetti_particles = [];
+      let confetti_start_time = 0;
+      const confetti_duration = 2500; // 2.5 seconds
+      const confetti_colors = [
+        '#0284c7', // X blue
+        '#db2777', // O pink
+        '#16a34a', // green
+        '#f59e0b', // amber
+        '#8b5cf6', // purple
+        '#ec4899', // rose
+        '#06b6d4', // cyan
+        '#f97316', // orange
+      ];
+
+      function create_confetti_particle() {
+        const angle = (Math.random() * Math.PI * 2);
+        const speed = 4 + Math.random() * 6;
+        return {
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 2, // bias upward
+          vy_gravity: 0.15,
+          rotation: Math.random() * Math.PI * 2,
+          rotation_speed: (Math.random() - 0.5) * 0.2,
+          size: 6 + Math.random() * 8,
+          color: confetti_colors[Math.floor(Math.random() * confetti_colors.length)],
+          opacity: 1,
+        };
+      }
+
+      function resize_confetti_canvas() {
+        confetti_canvas.width = window.innerWidth;
+        confetti_canvas.height = window.innerHeight;
+      }
+
+      function draw_confetti_particle(particle) {
+        confetti_ctx.save();
+        confetti_ctx.globalAlpha = particle.opacity;
+        confetti_ctx.translate(particle.x, particle.y);
+        confetti_ctx.rotate(particle.rotation);
+        confetti_ctx.fillStyle = particle.color;
+        confetti_ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+        confetti_ctx.restore();
+      }
+
+      function update_confetti_particle(particle, elapsed_ms) {
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += particle.vy_gravity;
+        particle.rotation += particle.rotation_speed;
+
+        // Fade out in last 500ms
+        if (elapsed_ms > confetti_duration - 500) {
+          particle.opacity = Math.max(0, 1 - (elapsed_ms - (confetti_duration - 500)) / 500);
+        }
+      }
+
+      function animate_confetti(current_time) {
+        if (confetti_start_time === 0) confetti_start_time = current_time;
+        const elapsed_ms = current_time - confetti_start_time;
+
+        // Clear canvas
+        confetti_ctx.clearRect(0, 0, confetti_canvas.width, confetti_canvas.height);
+
+        // Update and draw particles
+        confetti_particles.forEach(particle => {
+          update_confetti_particle(particle, elapsed_ms);
+          draw_confetti_particle(particle);
+        });
+
+        // Check if animation should end
+        if (elapsed_ms < confetti_duration) {
+          confetti_animation_id = requestAnimationFrame(animate_confetti);
+        } else {
+          cleanup_confetti();
+        }
+      }
+
+      function cleanup_confetti() {
+        if (confetti_animation_id !== null) {
+          cancelAnimationFrame(confetti_animation_id);
+          confetti_animation_id = null;
+        }
+        confetti_particles = [];
+        confetti_start_time = 0;
+        confetti_ctx.clearRect(0, 0, confetti_canvas.width, confetti_canvas.height);
+      }
+
+      function trigger_confetti() {
+        // Clean up any existing animation first
+        cleanup_confetti();
+
+        // Initialize canvas
+        resize_confetti_canvas();
+
+        // Create particles
+        const particle_count = 60 + Math.floor(Math.random() * 20); // 60-80 particles
+        confetti_particles = Array.from({ length: particle_count }, () => create_confetti_particle());
+
+        // Start animation
+        confetti_animation_id = requestAnimationFrame(animate_confetti);
+      }
+
+      window.addEventListener('resize', resize_confetti_canvas);
+      resize_confetti_canvas();
+
       const WIN_LINES = [
         [0, 1, 2], [3, 4, 5], [6, 7, 8],
         [0, 3, 6], [1, 4, 7], [2, 5, 8],
@@ -573,6 +692,7 @@
           const winning_display_name = get_display_name(winning_player);
           render_status(`${winning_display_name} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
           disable_remaining_cells();
+          trigger_confetti();
           return;
         }
 
@@ -593,6 +713,7 @@
       }
 
       function reset_game() {
+        cleanup_confetti();
         board_state = Array(9).fill('');
         current_player = 'X';
         game_over = false;
