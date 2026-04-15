@@ -442,6 +442,76 @@
       let player_name_o = '';
       let names_set = false;
 
+      function save_game_state() {
+        try {
+          localStorage.setItem('tic-tac-toe-board', JSON.stringify(board_state));
+          localStorage.setItem('tic-tac-toe-current-player', current_player);
+          localStorage.setItem('tic-tac-toe-game-over', JSON.stringify(game_over));
+          localStorage.setItem('tic-tac-toe-score-x', JSON.stringify(score_x_wins));
+          localStorage.setItem('tic-tac-toe-score-o', JSON.stringify(score_o_wins));
+          localStorage.setItem('tic-tac-toe-score-draws', JSON.stringify(score_draws));
+        } catch (e) {
+          // localStorage may be unavailable (private browsing, etc)
+        }
+      }
+
+      function load_game_state() {
+        try {
+          const saved_board = localStorage.getItem('tic-tac-toe-board');
+          const saved_player = localStorage.getItem('tic-tac-toe-current-player');
+          const saved_game_over = localStorage.getItem('tic-tac-toe-game-over');
+          const saved_score_x = localStorage.getItem('tic-tac-toe-score-x');
+          const saved_score_o = localStorage.getItem('tic-tac-toe-score-o');
+          const saved_score_draws = localStorage.getItem('tic-tac-toe-score-draws');
+
+          if (saved_board) {
+            board_state = JSON.parse(saved_board);
+          }
+          if (saved_player) {
+            current_player = saved_player;
+          }
+          if (saved_game_over !== null) {
+            game_over = JSON.parse(saved_game_over);
+          }
+          if (saved_score_x !== null) {
+            score_x_wins = JSON.parse(saved_score_x);
+          }
+          if (saved_score_o !== null) {
+            score_o_wins = JSON.parse(saved_score_o);
+          }
+          if (saved_score_draws !== null) {
+            score_draws = JSON.parse(saved_score_draws);
+          }
+        } catch (e) {
+          // localStorage unavailable or data corrupted, use defaults
+        }
+      }
+
+      function render_board() {
+        board_cells.forEach((cell, index) => {
+          const mark_value = board_state[index];
+          cell.textContent = '';
+          cell.classList.remove('x', 'o', 'winning');
+          cell.disabled = false;
+          if (mark_value === 'X' || mark_value === 'O') {
+            const mark_element = document.createElement('span');
+            mark_element.className = 'mark';
+            mark_element.textContent = mark_value;
+            cell.appendChild(mark_element);
+            cell.classList.add(mark_value.toLowerCase());
+          }
+        });
+
+        // Re-highlight winning line if game is over
+        if (game_over) {
+          const winning_result = detect_winner();
+          if (winning_result) {
+            highlight_winning_line(winning_result.line);
+          }
+          disable_remaining_cells();
+        }
+      }
+
       function load_player_names() {
         player_name_x = localStorage.getItem('tic-tac-toe-player-x') || '';
         player_name_o = localStorage.getItem('tic-tac-toe-player-o') || '';
@@ -573,6 +643,7 @@
           const winning_display_name = get_display_name(winning_player);
           render_status(`${winning_display_name} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
           disable_remaining_cells();
+          save_game_state();
           return;
         }
 
@@ -581,11 +652,13 @@
           score_draws += 1;
           render_scoreboard();
           render_status("Draw", 'draw');
+          save_game_state();
           return;
         }
 
         current_player = current_player === 'X' ? 'O' : 'X';
         render_status(`${get_display_name(current_player)}'s turn`);
+        save_game_state();
       }
 
       function disable_remaining_cells() {
@@ -602,12 +675,20 @@
           cell.disabled = false;
         });
         render_status(`${get_display_name('X')}'s turn`);
+        save_game_state();
       }
 
       function reset_scores() {
         score_x_wins = 0;
         score_o_wins = 0;
         score_draws = 0;
+        try {
+          localStorage.setItem('tic-tac-toe-score-x', '0');
+          localStorage.setItem('tic-tac-toe-score-o', '0');
+          localStorage.setItem('tic-tac-toe-score-draws', '0');
+        } catch (e) {
+          // localStorage may be unavailable
+        }
         render_scoreboard();
       }
 
@@ -625,13 +706,26 @@
         if (e.key === 'Enter') save_player_names();
       });
 
+      load_game_state();
       load_player_names();
+      render_board();
       render_scoreboard();
       update_theme_toggle_icon();
       if (!names_set) {
         show_names_modal();
       } else {
-        render_status(`${get_display_name('X')}'s turn`);
+        if (game_over) {
+          const winning_result = detect_winner();
+          if (winning_result) {
+            const winning_player = winning_result.player;
+            const winning_display_name = get_display_name(winning_player);
+            render_status(`${winning_display_name} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
+          } else if (is_draw()) {
+            render_status("Draw", 'draw');
+          }
+        } else {
+          render_status(`${get_display_name(current_player)}'s turn`);
+        }
       }
     })();
   </script>
