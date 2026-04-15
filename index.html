@@ -238,15 +238,155 @@
     body {
       position: relative;
     }
+
+    #player-names-modal {
+      display: flex;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    #player-names-modal.hidden {
+      display: none;
+    }
+
+    .modal-content {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 2rem;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-content h2 {
+      margin: 0 0 1.5rem 0;
+      color: var(--fg);
+      font-size: 1.5rem;
+    }
+
+    .name-input-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .name-input-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--fg);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .name-input-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .name-input-group input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+    }
+
+    .modal-button {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease;
+    }
+
+    .modal-button:hover {
+      background: var(--accent-hover);
+    }
+
+    .modal-button:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
+
+    .modal-button.secondary {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+
+    .modal-button.secondary:hover {
+      background: var(--cell-hover);
+      border-color: var(--muted);
+    }
+
+    #change-names {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    #change-names:hover {
+      background: var(--cell-hover);
+      border-color: var(--muted);
+    }
+
+    #change-names:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
   </style>
 </head>
 <body>
   <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
+  <div id="player-names-modal">
+    <div class="modal-content">
+      <h2>Enter Player Names</h2>
+      <div class="name-input-group">
+        <label for="player-x-input">Player X Name</label>
+        <input id="player-x-input" type="text" placeholder="Player X" maxlength="20" />
+      </div>
+      <div class="name-input-group">
+        <label for="player-o-input">Player O Name</label>
+        <input id="player-o-input" type="text" placeholder="Player O" maxlength="20" />
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-button" id="set-names">Set Names</button>
+      </div>
+    </div>
+  </div>
   <main>
     <h1>Tic-Tac-Toe</h1>
     <div id="scoreboard" aria-live="polite" aria-label="Score">
-      <span class="score-x">X: <span id="score-x-value">0</span></span>
-      <span class="score-o">O: <span id="score-o-value">0</span></span>
+      <span class="score-x"><span id="score-x-label">X</span>: <span id="score-x-value">0</span></span>
+      <span class="score-o"><span id="score-o-label">O</span>: <span id="score-o-value">0</span></span>
       <span class="score-draws">Draws: <span id="score-draws-value">0</span></span>
     </div>
     <div id="status" aria-live="polite">Player X's turn</div>
@@ -264,6 +404,7 @@
     <div id="controls">
       <button id="reset" type="button">Reset Game</button>
       <button id="reset-scores" type="button">Reset Scores</button>
+      <button id="change-names" type="button">Change Names</button>
     </div>
   </main>
 
@@ -283,6 +424,13 @@
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
       const theme_toggle_button = document.getElementById('theme-toggle');
+      const player_names_modal = document.getElementById('player-names-modal');
+      const player_x_input = document.getElementById('player-x-input');
+      const player_o_input = document.getElementById('player-o-input');
+      const set_names_button = document.getElementById('set-names');
+      const change_names_button = document.getElementById('change-names');
+      const score_x_label = document.getElementById('score-x-label');
+      const score_o_label = document.getElementById('score-o-label');
 
       let board_state = Array(9).fill('');
       let current_player = 'X';
@@ -290,6 +438,56 @@
       let score_x_wins = 0;
       let score_o_wins = 0;
       let score_draws = 0;
+      let player_name_x = '';
+      let player_name_o = '';
+      let names_set = false;
+
+      function load_player_names() {
+        player_name_x = localStorage.getItem('tic-tac-toe-player-x') || '';
+        player_name_o = localStorage.getItem('tic-tac-toe-player-o') || '';
+        player_x_input.value = player_name_x;
+        player_o_input.value = player_name_o;
+        names_set = player_name_x !== '' || player_name_o !== '';
+        if (names_set) {
+          player_names_modal.classList.add('hidden');
+        }
+        update_scoreboard_labels();
+      }
+
+      function get_display_name(player_symbol) {
+        if (player_symbol === 'X') {
+          return player_name_x ? player_name_x : 'Player X';
+        } else {
+          return player_name_o ? player_name_o : 'Player O';
+        }
+      }
+
+      function show_names_modal() {
+        player_x_input.value = player_name_x;
+        player_o_input.value = player_name_o;
+        player_names_modal.classList.remove('hidden');
+        player_x_input.focus();
+      }
+
+      function save_player_names() {
+        const x_name = player_x_input.value.trim();
+        const o_name = player_o_input.value.trim();
+        player_name_x = x_name;
+        player_name_o = o_name;
+        localStorage.setItem('tic-tac-toe-player-x', player_name_x);
+        localStorage.setItem('tic-tac-toe-player-o', player_name_o);
+        names_set = true;
+        player_names_modal.classList.add('hidden');
+        update_scoreboard_labels();
+        if (!game_over) {
+          render_status(`${get_display_name(current_player)}'s turn`);
+        }
+      }
+
+      function update_scoreboard_labels() {
+        score_x_label.textContent = player_name_x ? player_name_x : 'X';
+        score_o_label.textContent = player_name_o ? player_name_o : 'O';
+      }
 
       function get_current_theme() {
         return document.documentElement.classList.contains('dark-theme') ? 'dark' : 'light';
@@ -372,7 +570,8 @@
           }
           highlight_winning_line(winning_result.line);
           render_scoreboard();
-          render_status(`Player ${winning_player} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
+          const winning_display_name = get_display_name(winning_player);
+          render_status(`${winning_display_name} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
           disable_remaining_cells();
           return;
         }
@@ -386,7 +585,7 @@
         }
 
         current_player = current_player === 'X' ? 'O' : 'X';
-        render_status(`Player ${current_player}'s turn`);
+        render_status(`${get_display_name(current_player)}'s turn`);
       }
 
       function disable_remaining_cells() {
@@ -402,7 +601,7 @@
           cell.classList.remove('x', 'o', 'winning');
           cell.disabled = false;
         });
-        render_status("Player X's turn");
+        render_status(`${get_display_name('X')}'s turn`);
       }
 
       function reset_scores() {
@@ -416,8 +615,24 @@
       reset_button.addEventListener('click', reset_game);
       reset_scores_button.addEventListener('click', reset_scores);
       theme_toggle_button.addEventListener('click', toggle_theme);
+      set_names_button.addEventListener('click', save_player_names);
+      change_names_button.addEventListener('click', show_names_modal);
+
+      player_x_input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') save_player_names();
+      });
+      player_o_input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') save_player_names();
+      });
+
+      load_player_names();
       render_scoreboard();
       update_theme_toggle_icon();
+      if (!names_set) {
+        show_names_modal();
+      } else {
+        render_status(`${get_display_name('X')}'s turn`);
+      }
     })();
   </script>
 </body>
