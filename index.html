@@ -4,8 +4,34 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tic-Tac-Toe</title>
+  <script>
+    (function () {
+      const stored_theme = localStorage.getItem('tic-tac-toe-theme');
+      const prefers_dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const should_use_dark = stored_theme ? stored_theme === 'dark' : prefers_dark;
+      if (should_use_dark) {
+        document.documentElement.classList.add('dark-theme');
+      }
+    })();
+  </script>
   <style>
     :root {
+      --bg: #f8fafc;
+      --panel: #f1f5f9;
+      --fg: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --x-color: #0284c7;
+      --o-color: #db2777;
+      --accent: #16a34a;
+      --accent-hover: #15803d;
+      --accent-fg: #fafafa;
+      --cell-hover: #e2e8f0;
+      --winning-bg: rgba(22, 163, 74, 0.15);
+      --winning-border: #16a34a;
+    }
+
+    html.dark-theme {
       --bg: #0f172a;
       --panel: #1e293b;
       --fg: #e2e8f0;
@@ -15,6 +41,10 @@
       --o-color: #f472b6;
       --accent: #22c55e;
       --accent-hover: #16a34a;
+      --accent-fg: #04110a;
+      --cell-hover: #273449;
+      --winning-bg: rgba(34, 197, 94, 0.28);
+      --winning-border: #22c55e;
     }
 
     * { box-sizing: border-box; }
@@ -108,7 +138,7 @@
     }
 
     .cell:hover:not(:disabled) {
-      background: #273449;
+      background: var(--cell-hover);
     }
 
     .cell:disabled {
@@ -119,12 +149,12 @@
     .cell.o { color: var(--o-color); }
 
     .cell.winning {
-      background: rgba(34, 197, 94, 0.28);
-      box-shadow: inset 0 0 0 2px var(--accent);
+      background: var(--winning-bg);
+      box-shadow: inset 0 0 0 2px var(--winning-border);
     }
 
     .cell.winning:hover:not(:disabled) {
-      background: rgba(34, 197, 94, 0.28);
+      background: var(--winning-bg);
     }
 
     .cell .mark {
@@ -145,7 +175,7 @@
 
     #reset {
       background: var(--accent);
-      color: #04110a;
+      color: var(--accent-fg);
       border: none;
       border-radius: 0.5rem;
       padding: 0.75rem 1.5rem;
@@ -172,11 +202,46 @@
       transition: background 0.15s ease, border-color 0.15s ease;
     }
 
-    #reset-scores:hover { background: #273449; border-color: var(--muted); }
+    #reset-scores:hover { background: var(--cell-hover); border-color: var(--muted); }
     #reset-scores:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+    #theme-toggle {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      color: var(--fg);
+      transition: background 0.15s ease, border-color 0.15s ease;
+      font-family: inherit;
+    }
+
+    #theme-toggle:hover {
+      background: var(--cell-hover);
+      border-color: var(--muted);
+    }
+
+    #theme-toggle:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
+
+    body {
+      position: relative;
+    }
   </style>
 </head>
 <body>
+  <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
   <main>
     <h1>Tic-Tac-Toe</h1>
     <div id="scoreboard" aria-live="polite" aria-label="Score">
@@ -217,6 +282,7 @@
       const score_x_element = document.getElementById('score-x-value');
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
+      const theme_toggle_button = document.getElementById('theme-toggle');
 
       let board_state = Array(9).fill('');
       let current_player = 'X';
@@ -224,6 +290,31 @@
       let score_x_wins = 0;
       let score_o_wins = 0;
       let score_draws = 0;
+
+      function get_current_theme() {
+        return document.documentElement.classList.contains('dark-theme') ? 'dark' : 'light';
+      }
+
+      function update_theme_toggle_icon() {
+        const is_dark = get_current_theme() === 'dark';
+        theme_toggle_button.textContent = is_dark ? '☀️' : '🌙';
+        theme_toggle_button.setAttribute('aria-label', is_dark ? 'Switch to light mode' : 'Switch to dark mode');
+      }
+
+      function toggle_theme() {
+        const html_element = document.documentElement;
+        const is_currently_dark = get_current_theme() === 'dark';
+        const new_theme = is_currently_dark ? 'light' : 'dark';
+
+        if (new_theme === 'dark') {
+          html_element.classList.add('dark-theme');
+        } else {
+          html_element.classList.remove('dark-theme');
+        }
+
+        localStorage.setItem('tic-tac-toe-theme', new_theme);
+        update_theme_toggle_icon();
+      }
 
       function render_status(message, css_class) {
         status_element.textContent = message;
@@ -324,7 +415,9 @@
       board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
       reset_button.addEventListener('click', reset_game);
       reset_scores_button.addEventListener('click', reset_scores);
+      theme_toggle_button.addEventListener('click', toggle_theme);
       render_scoreboard();
+      update_theme_toggle_icon();
     })();
   </script>
 </body>
