@@ -58,6 +58,28 @@
     #status.win-o { color: var(--o-color); }
     #status.draw  { color: var(--muted); }
 
+    #scoreboard {
+      display: flex;
+      gap: 1.25rem;
+      padding: 0.5rem 1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: var(--fg);
+    }
+
+    #scoreboard .score-x { color: var(--x-color); }
+    #scoreboard .score-o { color: var(--o-color); }
+    #scoreboard .score-draws { color: var(--muted); }
+
+    #controls {
+      display: flex;
+      gap: 0.75rem;
+    }
+
     #board {
       display: grid;
       grid-template-columns: repeat(3, 6rem);
@@ -111,11 +133,32 @@
 
     #reset:hover { background: var(--accent-hover); }
     #reset:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+    #reset-scores {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    #reset-scores:hover { background: #273449; border-color: var(--muted); }
+    #reset-scores:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
   </style>
 </head>
 <body>
   <main>
     <h1>Tic-Tac-Toe</h1>
+    <div id="scoreboard" aria-live="polite" aria-label="Score">
+      <span class="score-x">X: <span id="score-x-value">0</span></span>
+      <span class="score-o">O: <span id="score-o-value">0</span></span>
+      <span class="score-draws">Draws: <span id="score-draws-value">0</span></span>
+    </div>
     <div id="status" aria-live="polite">Player X's turn</div>
     <div id="board" role="grid" aria-label="Tic-tac-toe board">
       <button class="cell" data-index="0" aria-label="Cell 1"></button>
@@ -128,7 +171,10 @@
       <button class="cell" data-index="7" aria-label="Cell 8"></button>
       <button class="cell" data-index="8" aria-label="Cell 9"></button>
     </div>
-    <button id="reset" type="button">Reset</button>
+    <div id="controls">
+      <button id="reset" type="button">Reset Game</button>
+      <button id="reset-scores" type="button">Reset Scores</button>
+    </div>
   </main>
 
   <script>
@@ -142,15 +188,28 @@
       const board_cells = Array.from(document.querySelectorAll('.cell'));
       const status_element = document.getElementById('status');
       const reset_button = document.getElementById('reset');
+      const reset_scores_button = document.getElementById('reset-scores');
+      const score_x_element = document.getElementById('score-x-value');
+      const score_o_element = document.getElementById('score-o-value');
+      const score_draws_element = document.getElementById('score-draws-value');
 
       let board_state = Array(9).fill('');
       let current_player = 'X';
       let game_over = false;
+      let score_x_wins = 0;
+      let score_o_wins = 0;
+      let score_draws = 0;
 
       function render_status(message, css_class) {
         status_element.textContent = message;
         status_element.classList.remove('win-x', 'win-o', 'draw');
         if (css_class) status_element.classList.add(css_class);
+      }
+
+      function render_scoreboard() {
+        score_x_element.textContent = String(score_x_wins);
+        score_o_element.textContent = String(score_o_wins);
+        score_draws_element.textContent = String(score_draws);
       }
 
       function detect_winner() {
@@ -178,6 +237,12 @@
         const winning_player = detect_winner();
         if (winning_player) {
           game_over = true;
+          if (winning_player === 'X') {
+            score_x_wins += 1;
+          } else {
+            score_o_wins += 1;
+          }
+          render_scoreboard();
           render_status(`Player ${winning_player} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
           disable_remaining_cells();
           return;
@@ -185,6 +250,8 @@
 
         if (is_draw()) {
           game_over = true;
+          score_draws += 1;
+          render_scoreboard();
           render_status("Draw", 'draw');
           return;
         }
@@ -209,8 +276,17 @@
         render_status("Player X's turn");
       }
 
+      function reset_scores() {
+        score_x_wins = 0;
+        score_o_wins = 0;
+        score_draws = 0;
+        render_scoreboard();
+      }
+
       board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
       reset_button.addEventListener('click', reset_game);
+      reset_scores_button.addEventListener('click', reset_scores);
+      render_scoreboard();
     })();
   </script>
 </body>
