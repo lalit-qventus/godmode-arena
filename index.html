@@ -111,6 +111,11 @@
       background: #273449;
     }
 
+    .cell:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: -3px;
+    }
+
     .cell:disabled {
       cursor: not-allowed;
     }
@@ -125,6 +130,18 @@
 
     .cell.winning:hover:not(:disabled) {
       background: rgba(34, 197, 94, 0.28);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
     }
 
     .cell .mark {
@@ -185,20 +202,27 @@
       <span class="score-draws">Draws: <span id="score-draws-value">0</span></span>
     </div>
     <div id="status" aria-live="polite">Player X's turn</div>
+    <div id="announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
     <div id="board" role="grid" aria-label="Tic-tac-toe board">
-      <button class="cell" data-index="0" aria-label="Cell 1"></button>
-      <button class="cell" data-index="1" aria-label="Cell 2"></button>
-      <button class="cell" data-index="2" aria-label="Cell 3"></button>
-      <button class="cell" data-index="3" aria-label="Cell 4"></button>
-      <button class="cell" data-index="4" aria-label="Cell 5"></button>
-      <button class="cell" data-index="5" aria-label="Cell 6"></button>
-      <button class="cell" data-index="6" aria-label="Cell 7"></button>
-      <button class="cell" data-index="7" aria-label="Cell 8"></button>
-      <button class="cell" data-index="8" aria-label="Cell 9"></button>
+      <div role="row">
+        <button class="cell" data-index="0" role="gridcell" tabindex="0"></button>
+        <button class="cell" data-index="1" role="gridcell" tabindex="-1"></button>
+        <button class="cell" data-index="2" role="gridcell" tabindex="-1"></button>
+      </div>
+      <div role="row">
+        <button class="cell" data-index="3" role="gridcell" tabindex="-1"></button>
+        <button class="cell" data-index="4" role="gridcell" tabindex="-1"></button>
+        <button class="cell" data-index="5" role="gridcell" tabindex="-1"></button>
+      </div>
+      <div role="row">
+        <button class="cell" data-index="6" role="gridcell" tabindex="-1"></button>
+        <button class="cell" data-index="7" role="gridcell" tabindex="-1"></button>
+        <button class="cell" data-index="8" role="gridcell" tabindex="-1"></button>
+      </div>
     </div>
     <div id="controls">
-      <button id="reset" type="button">Reset Game</button>
-      <button id="reset-scores" type="button">Reset Scores</button>
+      <button id="reset" type="button" aria-label="Reset game board">Reset Game</button>
+      <button id="reset-scores" type="button" aria-label="Reset game scores">Reset Scores</button>
     </div>
   </main>
 
@@ -212,6 +236,7 @@
 
       const board_cells = Array.from(document.querySelectorAll('.cell'));
       const status_element = document.getElementById('status');
+      const announcements_element = document.getElementById('announcements');
       const reset_button = document.getElementById('reset');
       const reset_scores_button = document.getElementById('reset-scores');
       const score_x_element = document.getElementById('score-x-value');
@@ -224,6 +249,30 @@
       let score_x_wins = 0;
       let score_o_wins = 0;
       let score_draws = 0;
+      let focused_cell_index = 0;
+
+      function get_cell_position(index) {
+        const row = Math.floor(index / 3) + 1;
+        const col = (index % 3) + 1;
+        return { row, col };
+      }
+
+      function get_cell_state_label(index) {
+        const state = board_state[index];
+        if (state === '') return 'empty';
+        return state;
+      }
+
+      function update_cell_aria_label(index) {
+        const { row, col } = get_cell_position(index);
+        const state = get_cell_state_label(index);
+        const label = `Row ${row}, Column ${col}, ${state}`;
+        board_cells[index].setAttribute('aria-label', label);
+      }
+
+      function update_all_cell_labels() {
+        board_cells.forEach((_, index) => update_cell_aria_label(index));
+      }
 
       function render_status(message, css_class) {
         status_element.textContent = message;
@@ -257,18 +306,18 @@
         return board_state.every(cell => cell !== '');
       }
 
-      function handle_cell_click(event) {
+      function place_mark(cell_index) {
         if (game_over) return;
-        const cell_index = Number(event.currentTarget.dataset.index);
         if (board_state[cell_index] !== '') return;
 
         board_state[cell_index] = current_player;
         const mark_element = document.createElement('span');
         mark_element.className = 'mark';
         mark_element.textContent = current_player;
-        event.currentTarget.textContent = '';
-        event.currentTarget.appendChild(mark_element);
-        event.currentTarget.classList.add(current_player.toLowerCase());
+        board_cells[cell_index].textContent = '';
+        board_cells[cell_index].appendChild(mark_element);
+        board_cells[cell_index].classList.add(current_player.toLowerCase());
+        update_cell_aria_label(cell_index);
 
         const winning_result = detect_winner();
         if (winning_result) {
@@ -282,6 +331,7 @@
           highlight_winning_line(winning_result.line);
           render_scoreboard();
           render_status(`Player ${winning_player} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
+          announcements_element.textContent = `${winning_player} wins!`;
           disable_remaining_cells();
           return;
         }
@@ -291,11 +341,52 @@
           score_draws += 1;
           render_scoreboard();
           render_status("Draw", 'draw');
+          announcements_element.textContent = "Draw!";
           return;
         }
 
         current_player = current_player === 'X' ? 'O' : 'X';
         render_status(`Player ${current_player}'s turn`);
+        announcements_element.textContent = `${current_player} turn`;
+      }
+
+      function handle_cell_click(event) {
+        place_mark(Number(event.currentTarget.dataset.index));
+      }
+
+      function move_focus(direction) {
+        const row = Math.floor(focused_cell_index / 3);
+        const col = focused_cell_index % 3;
+        let new_index = focused_cell_index;
+
+        if (direction === 'ArrowUp') {
+          new_index = ((row - 1 + 3) % 3) * 3 + col;
+        } else if (direction === 'ArrowDown') {
+          new_index = ((row + 1) % 3) * 3 + col;
+        } else if (direction === 'ArrowLeft') {
+          new_index = row * 3 + ((col - 1 + 3) % 3);
+        } else if (direction === 'ArrowRight') {
+          new_index = row * 3 + ((col + 1) % 3);
+        }
+
+        set_focused_cell(new_index);
+      }
+
+      function set_focused_cell(index) {
+        board_cells[focused_cell_index].tabIndex = -1;
+        focused_cell_index = index;
+        board_cells[focused_cell_index].tabIndex = 0;
+        board_cells[focused_cell_index].focus();
+      }
+
+      function handle_cell_keydown(event) {
+        if (event.key.startsWith('Arrow')) {
+          event.preventDefault();
+          move_focus(event.key);
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          place_mark(focused_cell_index);
+        }
       }
 
       function disable_remaining_cells() {
@@ -306,12 +397,17 @@
         board_state = Array(9).fill('');
         current_player = 'X';
         game_over = false;
+        focused_cell_index = 0;
         board_cells.forEach(cell => {
           cell.textContent = '';
           cell.classList.remove('x', 'o', 'winning');
           cell.disabled = false;
         });
+        update_all_cell_labels();
+        board_cells[0].tabIndex = 0;
+        board_cells.slice(1).forEach(cell => { cell.tabIndex = -1; });
         render_status("Player X's turn");
+        announcements_element.textContent = "";
       }
 
       function reset_scores() {
@@ -321,9 +417,18 @@
         render_scoreboard();
       }
 
-      board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
+      board_cells.forEach((cell, index) => {
+        cell.addEventListener('click', handle_cell_click);
+        cell.addEventListener('keydown', handle_cell_keydown);
+        if (index === 0) {
+          cell.tabIndex = 0;
+        } else {
+          cell.tabIndex = -1;
+        }
+      });
       reset_button.addEventListener('click', reset_game);
       reset_scores_button.addEventListener('click', reset_scores);
+      update_all_cell_labels();
       render_scoreboard();
     })();
   </script>
