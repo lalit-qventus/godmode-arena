@@ -118,6 +118,31 @@
     .cell.x { color: var(--x-color); }
     .cell.o { color: var(--o-color); }
 
+    .cell.winning {
+      background: rgba(34, 197, 94, 0.28);
+      box-shadow: inset 0 0 0 2px var(--accent);
+    }
+
+    .cell.winning:hover:not(:disabled) {
+      background: rgba(34, 197, 94, 0.28);
+    }
+
+    .cell .mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      animation: mark-in 200ms ease-out;
+    }
+
+    @keyframes mark-in {
+      from { transform: scale(0.35); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cell .mark { animation: none; }
+    }
+
     #reset {
       background: var(--accent);
       color: #04110a;
@@ -213,12 +238,19 @@
       }
 
       function detect_winner() {
-        for (const [a, b, c] of WIN_LINES) {
+        for (const line of WIN_LINES) {
+          const [a, b, c] = line;
           if (board_state[a] && board_state[a] === board_state[b] && board_state[a] === board_state[c]) {
-            return board_state[a];
+            return { player: board_state[a], line };
           }
         }
         return null;
+      }
+
+      function highlight_winning_line(line) {
+        for (const cell_index of line) {
+          board_cells[cell_index].classList.add('winning');
+        }
       }
 
       function is_draw() {
@@ -231,17 +263,23 @@
         if (board_state[cell_index] !== '') return;
 
         board_state[cell_index] = current_player;
-        event.currentTarget.textContent = current_player;
+        const mark_element = document.createElement('span');
+        mark_element.className = 'mark';
+        mark_element.textContent = current_player;
+        event.currentTarget.textContent = '';
+        event.currentTarget.appendChild(mark_element);
         event.currentTarget.classList.add(current_player.toLowerCase());
 
-        const winning_player = detect_winner();
-        if (winning_player) {
+        const winning_result = detect_winner();
+        if (winning_result) {
+          const winning_player = winning_result.player;
           game_over = true;
           if (winning_player === 'X') {
             score_x_wins += 1;
           } else {
             score_o_wins += 1;
           }
+          highlight_winning_line(winning_result.line);
           render_scoreboard();
           render_status(`Player ${winning_player} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
           disable_remaining_cells();
@@ -270,7 +308,7 @@
         game_over = false;
         board_cells.forEach(cell => {
           cell.textContent = '';
-          cell.classList.remove('x', 'o');
+          cell.classList.remove('x', 'o', 'winning');
           cell.disabled = false;
         });
         render_status("Player X's turn");
