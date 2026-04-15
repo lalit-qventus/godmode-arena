@@ -235,6 +235,89 @@
       outline-offset: 2px;
     }
 
+    #history-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      min-width: 12rem;
+      max-width: 14rem;
+      max-height: 18rem;
+      overflow-y: auto;
+    }
+
+    #history-panel-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0;
+    }
+
+    #move-history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .move-entry {
+      font-size: 0.875rem;
+      padding: 0.375rem 0.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      color: var(--fg);
+      word-break: break-word;
+    }
+
+    .move-entry.x-move { border-left: 3px solid var(--x-color); }
+    .move-entry.o-move { border-left: 3px solid var(--o-color); }
+
+    #undo-button {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease;
+      width: 100%;
+    }
+
+    #undo-button:hover:not(:disabled) { background: var(--accent-hover); }
+    #undo-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #undo-button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+    @media (max-width: 48rem) {
+      main {
+        flex-direction: column;
+        padding: 1rem;
+        gap: 1rem;
+      }
+
+      #history-panel {
+        min-width: 100%;
+        max-width: 100%;
+        max-height: 10rem;
+      }
+
+      h1 { font-size: 1.5rem; }
+      #board { grid-template-columns: repeat(3, 5rem); grid-template-rows: repeat(3, 5rem); }
+    }
+
     body {
       position: relative;
     }
@@ -250,16 +333,23 @@
       <span class="score-draws">Draws: <span id="score-draws-value">0</span></span>
     </div>
     <div id="status" aria-live="polite">Player X's turn</div>
-    <div id="board" role="grid" aria-label="Tic-tac-toe board">
-      <button class="cell" data-index="0" aria-label="Cell 1"></button>
-      <button class="cell" data-index="1" aria-label="Cell 2"></button>
-      <button class="cell" data-index="2" aria-label="Cell 3"></button>
-      <button class="cell" data-index="3" aria-label="Cell 4"></button>
-      <button class="cell" data-index="4" aria-label="Cell 5"></button>
-      <button class="cell" data-index="5" aria-label="Cell 6"></button>
-      <button class="cell" data-index="6" aria-label="Cell 7"></button>
-      <button class="cell" data-index="7" aria-label="Cell 8"></button>
-      <button class="cell" data-index="8" aria-label="Cell 9"></button>
+    <div style="display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center; align-items: flex-start;">
+      <div id="board" role="grid" aria-label="Tic-tac-toe board">
+        <button class="cell" data-index="0" aria-label="Cell 1"></button>
+        <button class="cell" data-index="1" aria-label="Cell 2"></button>
+        <button class="cell" data-index="2" aria-label="Cell 3"></button>
+        <button class="cell" data-index="3" aria-label="Cell 4"></button>
+        <button class="cell" data-index="4" aria-label="Cell 5"></button>
+        <button class="cell" data-index="5" aria-label="Cell 6"></button>
+        <button class="cell" data-index="6" aria-label="Cell 7"></button>
+        <button class="cell" data-index="7" aria-label="Cell 8"></button>
+        <button class="cell" data-index="8" aria-label="Cell 9"></button>
+      </div>
+      <div id="history-panel" aria-label="Move history">
+        <h2 id="history-panel-title">Move History</h2>
+        <ul id="move-history-list"></ul>
+        <button id="undo-button" type="button" disabled>Undo Last Move</button>
+      </div>
     </div>
     <div id="controls">
       <button id="reset" type="button">Reset Game</button>
@@ -283,6 +373,8 @@
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
       const theme_toggle_button = document.getElementById('theme-toggle');
+      const undo_button = document.getElementById('undo-button');
+      const move_history_list = document.getElementById('move-history-list');
 
       let board_state = Array(9).fill('');
       let current_player = 'X';
@@ -290,6 +382,8 @@
       let score_x_wins = 0;
       let score_o_wins = 0;
       let score_draws = 0;
+      let move_history = [];
+      let pre_move_game_state = { game_over: false, player: 'X' };
 
       function get_current_theme() {
         return document.documentElement.classList.contains('dark-theme') ? 'dark' : 'light';
@@ -328,6 +422,21 @@
         score_draws_element.textContent = String(score_draws);
       }
 
+      function get_cell_position_name(cell_index) {
+        return `Cell ${cell_index + 1}`;
+      }
+
+      function render_history() {
+        move_history_list.innerHTML = '';
+        move_history.forEach((move, idx) => {
+          const entry = document.createElement('li');
+          entry.className = `move-entry ${move.player.toLowerCase()}-move`;
+          entry.textContent = `${idx + 1}. ${move.player}: ${move.position}`;
+          move_history_list.appendChild(entry);
+        });
+        undo_button.disabled = move_history.length === 0;
+      }
+
       function detect_winner() {
         for (const line of WIN_LINES) {
           const [a, b, c] = line;
@@ -353,7 +462,16 @@
         const cell_index = Number(event.currentTarget.dataset.index);
         if (board_state[cell_index] !== '') return;
 
+        pre_move_game_state = { game_over, player: current_player };
+
         board_state[cell_index] = current_player;
+        move_history.push({
+          cell_index,
+          player: current_player,
+          position: get_cell_position_name(cell_index),
+        });
+        render_history();
+
         const mark_element = document.createElement('span');
         mark_element.className = 'mark';
         mark_element.textContent = current_player;
@@ -393,16 +511,41 @@
         board_cells.forEach(cell => { cell.disabled = true; });
       }
 
+      function undo_last_move() {
+        if (move_history.length === 0) return;
+
+        const last_move = move_history.pop();
+        const cell_index = last_move.cell_index;
+
+        board_state[cell_index] = '';
+        const cell_element = board_cells[cell_index];
+        cell_element.textContent = '';
+        cell_element.classList.remove('x', 'o', 'winning');
+        cell_element.disabled = false;
+
+        board_cells.forEach(cell => cell.classList.remove('winning'));
+
+        if (game_over) {
+          game_over = false;
+        }
+
+        current_player = last_move.player;
+        render_status(`Player ${current_player}'s turn`);
+        render_history();
+      }
+
       function reset_game() {
         board_state = Array(9).fill('');
         current_player = 'X';
         game_over = false;
+        move_history = [];
         board_cells.forEach(cell => {
           cell.textContent = '';
           cell.classList.remove('x', 'o', 'winning');
           cell.disabled = false;
         });
         render_status("Player X's turn");
+        render_history();
       }
 
       function reset_scores() {
@@ -415,8 +558,10 @@
       board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
       reset_button.addEventListener('click', reset_game);
       reset_scores_button.addEventListener('click', reset_scores);
+      undo_button.addEventListener('click', undo_last_move);
       theme_toggle_button.addEventListener('click', toggle_theme);
       render_scoreboard();
+      render_history();
       update_theme_toggle_icon();
     })();
   </script>
