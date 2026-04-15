@@ -369,6 +369,70 @@
       left: 0;
       pointer-events: none;
     }
+
+    #timer-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+    }
+
+    .timer-control-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #timer-toggle {
+      cursor: pointer;
+      width: 1rem;
+      height: 1rem;
+    }
+
+    #timer-duration {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    #timer-duration:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    #timer-display {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 4rem;
+      text-align: center;
+    }
+
+    #timer-display.warning {
+      color: #f59e0b;
+    }
+
+    #timer-display.critical {
+      color: #ef4444;
+      animation: timer-pulse 0.5s infinite;
+    }
+
+    @keyframes timer-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #timer-display.critical { animation: none; }
+    }
   </style>
 </head>
 <body>
@@ -398,6 +462,22 @@
       <span class="score-draws">Draws: <span id="score-draws-value">0</span></span>
     </div>
     <div id="status" aria-live="polite">Player X's turn</div>
+    <div id="timer-controls">
+      <div class="timer-control-group">
+        <input type="checkbox" id="timer-toggle" aria-label="Enable turn timer" />
+        <label for="timer-toggle">Turn Timer</label>
+      </div>
+      <div class="timer-control-group">
+        <label for="timer-duration">Duration:</label>
+        <select id="timer-duration" aria-label="Timer duration in seconds">
+          <option value="5">5s</option>
+          <option value="10" selected>10s</option>
+          <option value="15">15s</option>
+          <option value="30">30s</option>
+        </select>
+      </div>
+      <div id="timer-display" aria-live="polite" aria-label="Remaining time"></div>
+    </div>
     <div id="board" role="grid" aria-label="Tic-tac-toe board">
       <button class="cell" data-index="0" aria-label="Cell 1"></button>
       <button class="cell" data-index="1" aria-label="Cell 2"></button>
@@ -550,6 +630,9 @@
       const change_names_button = document.getElementById('change-names');
       const score_x_label = document.getElementById('score-x-label');
       const score_o_label = document.getElementById('score-o-label');
+      const timer_toggle = document.getElementById('timer-toggle');
+      const timer_duration_select = document.getElementById('timer-duration');
+      const timer_display = document.getElementById('timer-display');
 
       let board_state = Array(9).fill('');
       let current_player = 'X';
@@ -560,6 +643,12 @@
       let player_name_x = '';
       let player_name_o = '';
       let names_set = false;
+
+      // Timer state
+      let timer_enabled = false;
+      let timer_duration_seconds = 10;
+      let timer_remaining_seconds = 10;
+      let timer_interval_id = null;
 
       function load_player_names() {
         player_name_x = localStorage.getItem('tic-tac-toe-player-x') || '';
@@ -600,12 +689,85 @@
         update_scoreboard_labels();
         if (!game_over) {
           render_status(`${get_display_name(current_player)}'s turn`);
+          start_timer();
         }
       }
 
       function update_scoreboard_labels() {
         score_x_label.textContent = player_name_x ? player_name_x : 'X';
         score_o_label.textContent = player_name_o ? player_name_o : 'O';
+      }
+
+      function save_timer_state() {
+        localStorage.setItem('tic-tac-toe-timer-enabled', String(timer_enabled));
+        localStorage.setItem('tic-tac-toe-timer-duration', String(timer_duration_seconds));
+      }
+
+      function load_timer_state() {
+        const stored_enabled = localStorage.getItem('tic-tac-toe-timer-enabled');
+        const stored_duration = localStorage.getItem('tic-tac-toe-timer-duration');
+        timer_enabled = stored_enabled === 'true';
+        timer_duration_seconds = stored_duration ? Number(stored_duration) : 10;
+        timer_remaining_seconds = timer_duration_seconds;
+        timer_toggle.checked = timer_enabled;
+        timer_duration_select.value = String(timer_duration_seconds);
+        update_timer_display();
+      }
+
+      function update_timer_display() {
+        if (!timer_enabled || game_over) {
+          timer_display.textContent = '';
+          timer_display.classList.remove('warning', 'critical');
+          return;
+        }
+        timer_display.textContent = String(timer_remaining_seconds) + 's';
+        timer_display.classList.remove('warning', 'critical');
+        if (timer_remaining_seconds <= 3) {
+          timer_display.classList.add('critical');
+        } else if (timer_remaining_seconds <= 5) {
+          timer_display.classList.add('warning');
+        }
+      }
+
+      function start_timer() {
+        if (!timer_enabled || game_over || timer_interval_id !== null) return;
+        timer_remaining_seconds = timer_duration_seconds;
+        update_timer_display();
+        timer_interval_id = setInterval(() => {
+          timer_remaining_seconds -= 1;
+          update_timer_display();
+          if (timer_remaining_seconds <= 0) {
+            handle_timer_expiration();
+          }
+        }, 1000);
+      }
+
+      function stop_timer() {
+        if (timer_interval_id !== null) {
+          clearInterval(timer_interval_id);
+          timer_interval_id = null;
+        }
+        timer_display.textContent = '';
+        timer_display.classList.remove('warning', 'critical');
+      }
+
+      function reset_timer() {
+        stop_timer();
+        if (timer_enabled && !game_over) {
+          start_timer();
+        }
+      }
+
+      function handle_timer_expiration() {
+        stop_timer();
+        render_status(`${get_display_name(current_player)} ran out of time!`);
+        current_player = current_player === 'X' ? 'O' : 'X';
+        setTimeout(() => {
+          if (!game_over) {
+            render_status(`${get_display_name(current_player)}'s turn`);
+            start_timer();
+          }
+        }, 1500);
       }
 
       function get_current_theme() {
@@ -682,6 +844,7 @@
         if (winning_result) {
           const winning_player = winning_result.player;
           game_over = true;
+          stop_timer();
           if (winning_player === 'X') {
             score_x_wins += 1;
           } else {
@@ -698,6 +861,7 @@
 
         if (is_draw()) {
           game_over = true;
+          stop_timer();
           score_draws += 1;
           render_scoreboard();
           render_status("Draw", 'draw');
@@ -706,6 +870,7 @@
 
         current_player = current_player === 'X' ? 'O' : 'X';
         render_status(`${get_display_name(current_player)}'s turn`);
+        reset_timer();
       }
 
       function disable_remaining_cells() {
@@ -714,6 +879,7 @@
 
       function reset_game() {
         cleanup_confetti();
+        stop_timer();
         board_state = Array(9).fill('');
         current_player = 'X';
         game_over = false;
@@ -723,6 +889,7 @@
           cell.disabled = false;
         });
         render_status(`${get_display_name('X')}'s turn`);
+        start_timer();
       }
 
       function reset_scores() {
@@ -739,6 +906,24 @@
       set_names_button.addEventListener('click', save_player_names);
       change_names_button.addEventListener('click', show_names_modal);
 
+      timer_toggle.addEventListener('change', (e) => {
+        timer_enabled = e.target.checked;
+        save_timer_state();
+        if (timer_enabled && !game_over) {
+          start_timer();
+        } else {
+          stop_timer();
+        }
+      });
+
+      timer_duration_select.addEventListener('change', (e) => {
+        timer_duration_seconds = Number(e.target.value);
+        save_timer_state();
+        if (!game_over) {
+          reset_timer();
+        }
+      });
+
       player_x_input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') save_player_names();
       });
@@ -747,12 +932,14 @@
       });
 
       load_player_names();
+      load_timer_state();
       render_scoreboard();
       update_theme_toggle_icon();
       if (!names_set) {
         show_names_modal();
       } else {
         render_status(`${get_display_name('X')}'s turn`);
+        start_timer();
       }
     })();
   </script>
