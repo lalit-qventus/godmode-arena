@@ -640,6 +640,40 @@
       outline-offset: 2px;
     }
 
+    #mode-controls {
+      display: flex;
+      justify-content: center;
+    }
+
+    #mode-toggle {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.5rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    #mode-toggle:hover {
+      background: var(--cell-hover);
+      border-color: var(--muted);
+    }
+
+    #mode-toggle:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
+
+    #mode-toggle.one-player {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-color: var(--accent);
+    }
+
     #theme-selector {
       position: absolute;
       top: 1rem;
@@ -719,6 +753,9 @@
       <span id="best-streak" class="best-streak-none">Best: &mdash;</span>
     </div>
     <div id="status" aria-live="polite">Player X's turn</div>
+    <div id="mode-controls">
+      <button id="mode-toggle" type="button" aria-label="Toggle game mode">2 Players</button>
+    </div>
     <div id="timer-controls">
       <div class="timer-control-group">
         <input type="checkbox" id="timer-toggle" aria-label="Enable turn timer" />
@@ -1079,11 +1116,19 @@
       const timer_toggle = document.getElementById('timer-toggle');
       const timer_duration_select = document.getElementById('timer-duration');
       const timer_display = document.getElementById('timer-display');
+      const mode_toggle_button = document.getElementById('mode-toggle');
+
+      const HUMAN_PLAYER = 'X';
+      const AI_PLAYER = 'O';
+      const AI_MOVE_DELAY_MS = 300;
 
       let board_state = Array(9).fill('');
       let current_player = 'X';
       let first_player_this_round = 'X';
       let game_over = false;
+      let game_mode = '2P';
+      let ai_thinking = false;
+      let ai_move_timeout_id = null;
       let score_x_wins = 0;
       let score_o_wins = 0;
       let score_draws = 0;
@@ -1141,6 +1186,7 @@
         if (!game_over) {
           render_status(`${get_display_name(current_player)}'s turn`);
           start_timer();
+          maybe_trigger_ai_move();
         }
       }
 
@@ -1185,6 +1231,7 @@
 
       function start_timer() {
         if (!timer_enabled || game_over || timer_interval_id !== null) return;
+        if (game_mode === '1P' && current_player === AI_PLAYER) return;
         timer_remaining_seconds = timer_duration_seconds;
         update_timer_display();
         timer_interval_id = setInterval(() => {
@@ -1220,6 +1267,7 @@
           if (!game_over) {
             render_status(`${get_display_name(current_player)}'s turn`);
             start_timer();
+            maybe_trigger_ai_move();
           }
         }, 1500);
       }
@@ -1408,16 +1456,13 @@
         return svg;
       }
 
-      function handle_cell_click(event) {
-        if (game_over) return;
-        const cell_index = Number(event.currentTarget.dataset.index);
-        if (board_state[cell_index] !== '') return;
-
-        board_state[cell_index] = current_player;
-        event.currentTarget.textContent = '';
-        const mark_svg = current_player === 'X' ? create_x_mark_svg() : create_o_mark_svg();
-        event.currentTarget.appendChild(mark_svg);
-        event.currentTarget.classList.add(current_player.toLowerCase());
+      function place_mark(cell_index, player) {
+        const cell = board_cells[cell_index];
+        board_state[cell_index] = player;
+        cell.textContent = '';
+        const mark_svg = player === 'X' ? create_x_mark_svg() : create_o_mark_svg();
+        cell.appendChild(mark_svg);
+        cell.classList.add(player.toLowerCase());
 
         play_click_sound();
 
@@ -1475,6 +1520,113 @@
         render_status(`${get_display_name(current_player)}'s turn`);
         update_favicon();
         reset_timer();
+        maybe_trigger_ai_move();
+      }
+
+      function handle_cell_click(event) {
+        if (game_over) return;
+        if (ai_thinking) return;
+        if (game_mode === '1P' && current_player === AI_PLAYER) return;
+        const cell_index = Number(event.currentTarget.dataset.index);
+        if (board_state[cell_index] !== '') return;
+        place_mark(cell_index, current_player);
+      }
+
+      function check_board_winner(board) {
+        for (const line of WIN_LINES) {
+          const [a, b, c] = line;
+          if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+            return board[a];
+          }
+        }
+        return null;
+      }
+
+      function minimax(board, depth, is_maximizing) {
+        const winner = check_board_winner(board);
+        if (winner === AI_PLAYER) return 10 - depth;
+        if (winner === HUMAN_PLAYER) return depth - 10;
+        if (board.every(cell => cell !== '')) return 0;
+
+        if (is_maximizing) {
+          let best_score = -Infinity;
+          for (let i = 0; i < 9; i++) {
+            if (board[i] === '') {
+              board[i] = AI_PLAYER;
+              const score = minimax(board, depth + 1, false);
+              board[i] = '';
+              if (score > best_score) best_score = score;
+            }
+          }
+          return best_score;
+        }
+
+        let worst_score = Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === '') {
+            board[i] = HUMAN_PLAYER;
+            const score = minimax(board, depth + 1, true);
+            board[i] = '';
+            if (score < worst_score) worst_score = score;
+          }
+        }
+        return worst_score;
+      }
+
+      function compute_ai_move() {
+        let best_score = -Infinity;
+        let best_index = -1;
+        for (let i = 0; i < 9; i++) {
+          if (board_state[i] === '') {
+            board_state[i] = AI_PLAYER;
+            const score = minimax(board_state, 0, false);
+            board_state[i] = '';
+            if (score > best_score) {
+              best_score = score;
+              best_index = i;
+            }
+          }
+        }
+        return best_index;
+      }
+
+      function maybe_trigger_ai_move() {
+        if (game_over) return;
+        if (game_mode !== '1P') return;
+        if (current_player !== AI_PLAYER) return;
+        if (ai_thinking) return;
+        ai_thinking = true;
+        stop_timer();
+        ai_move_timeout_id = setTimeout(() => {
+          ai_move_timeout_id = null;
+          ai_thinking = false;
+          if (game_over) return;
+          if (current_player !== AI_PLAYER) return;
+          const move_index = compute_ai_move();
+          if (move_index === -1) return;
+          place_mark(move_index, AI_PLAYER);
+        }, AI_MOVE_DELAY_MS);
+      }
+
+      function cancel_pending_ai_move() {
+        if (ai_move_timeout_id !== null) {
+          clearTimeout(ai_move_timeout_id);
+          ai_move_timeout_id = null;
+        }
+        ai_thinking = false;
+      }
+
+      function update_mode_toggle_label() {
+        mode_toggle_button.textContent = game_mode === '1P' ? '1 Player' : '2 Players';
+        mode_toggle_button.classList.toggle('one-player', game_mode === '1P');
+      }
+
+      function toggle_game_mode() {
+        game_mode = game_mode === '2P' ? '1P' : '2P';
+        update_mode_toggle_label();
+        cancel_pending_ai_move();
+        first_player_this_round = 'X';
+        reset_game();
       }
 
       function disable_remaining_cells() {
@@ -1484,6 +1636,7 @@
       function reset_game() {
         cleanup_confetti();
         stop_timer();
+        cancel_pending_ai_move();
         const board_element = document.getElementById('board');
         board_element.classList.remove('shake');
         board_state = Array(9).fill('');
@@ -1498,6 +1651,7 @@
         render_status(`${get_display_name(first_player_this_round)}'s turn`);
         update_favicon();
         start_timer();
+        maybe_trigger_ai_move();
       }
 
       function reset_scores() {
@@ -1527,6 +1681,7 @@
       });
       set_names_button.addEventListener('click', save_player_names);
       change_names_button.addEventListener('click', show_names_modal);
+      mode_toggle_button.addEventListener('click', toggle_game_mode);
 
       timer_toggle.addEventListener('change', (e) => {
         timer_enabled = e.target.checked;
@@ -1577,12 +1732,14 @@
       render_scoreboard();
       update_theme_toggle_icon();
       update_audio_toggle_icon();
+      update_mode_toggle_label();
       update_favicon();
       if (!names_set) {
         show_names_modal();
       } else {
         render_status(`${get_display_name('X')}'s turn`);
         start_timer();
+        maybe_trigger_ai_move();
       }
     })();
   </script>
