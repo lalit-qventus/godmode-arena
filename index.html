@@ -169,6 +169,54 @@
       to   { transform: scale(1);    opacity: 1; }
     }
 
+    .cell svg {
+      width: 100%;
+      height: 100%;
+      max-width: 4.8rem;
+      max-height: 4.8rem;
+    }
+
+    .cell svg.x-mark path {
+      stroke: var(--x-color);
+      stroke-width: 0.4rem;
+      stroke-linecap: round;
+      fill: none;
+      animation: draw-x-stroke 150ms ease-out forwards;
+    }
+
+    .cell svg.x-mark path:nth-child(2) {
+      animation-delay: 150ms;
+    }
+
+    @keyframes draw-x-stroke {
+      from {
+        stroke-dashoffset: var(--stroke-length);
+        opacity: 0;
+      }
+      to {
+        stroke-dashoffset: 0;
+        opacity: 1;
+      }
+    }
+
+    .cell svg.o-mark circle {
+      stroke: var(--o-color);
+      stroke-width: 0.4rem;
+      fill: none;
+      animation: draw-o-circle 200ms ease-out forwards;
+    }
+
+    @keyframes draw-o-circle {
+      from {
+        stroke-dashoffset: var(--o-stroke-length);
+        opacity: 0;
+      }
+      to {
+        stroke-dashoffset: 0;
+        opacity: 1;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .cell .mark { animation: none; }
     }
@@ -827,17 +875,62 @@
         return board_state.every(cell => cell !== '');
       }
 
+      function create_x_mark_svg() {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        svg.setAttribute('class', 'x-mark');
+
+        // Calculate stroke length for dasharray (diagonal lines)
+        const stroke_length = Math.sqrt(100 * 100 + 100 * 100) / Math.sqrt(2);
+
+        // First diagonal: top-left to bottom-right
+        const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path1.setAttribute('d', 'M 20 20 L 80 80');
+        path1.setAttribute('style', `--stroke-length: ${stroke_length}`);
+        path1.setAttribute('stroke-dasharray', stroke_length);
+
+        // Second diagonal: top-right to bottom-left
+        const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path2.setAttribute('d', 'M 80 20 L 20 80');
+        path2.setAttribute('style', `--stroke-length: ${stroke_length}`);
+        path2.setAttribute('stroke-dasharray', stroke_length);
+
+        svg.appendChild(path1);
+        svg.appendChild(path2);
+
+        return svg;
+      }
+
+      function create_o_mark_svg() {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        svg.setAttribute('class', 'o-mark');
+
+        // Circle with radius 30, centered at (50, 50)
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', '50');
+        circle.setAttribute('cy', '50');
+        circle.setAttribute('r', '30');
+
+        // Calculate circumference for stroke animation
+        const circumference = 2 * Math.PI * 30;
+        circle.setAttribute('stroke-dasharray', circumference);
+        circle.setAttribute('style', `--o-stroke-length: ${circumference}`);
+
+        svg.appendChild(circle);
+
+        return svg;
+      }
+
       function handle_cell_click(event) {
         if (game_over) return;
         const cell_index = Number(event.currentTarget.dataset.index);
         if (board_state[cell_index] !== '') return;
 
         board_state[cell_index] = current_player;
-        const mark_element = document.createElement('span');
-        mark_element.className = 'mark';
-        mark_element.textContent = current_player;
         event.currentTarget.textContent = '';
-        event.currentTarget.appendChild(mark_element);
+        const mark_svg = current_player === 'X' ? create_x_mark_svg() : create_o_mark_svg();
+        event.currentTarget.appendChild(mark_svg);
         event.currentTarget.classList.add(current_player.toLowerCase());
 
         const winning_result = detect_winner();
@@ -884,7 +977,7 @@
         current_player = 'X';
         game_over = false;
         board_cells.forEach(cell => {
-          cell.textContent = '';
+          cell.innerHTML = '';
           cell.classList.remove('x', 'o', 'winning');
           cell.disabled = false;
         });
