@@ -518,20 +518,22 @@
       pointer-events: none;
     }
 
+    #turn-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
     #timer-controls {
       display: flex;
       align-items: center;
-      gap: 1rem;
-      padding: 0.75rem 1rem;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 0.5rem;
-    }
-
-    .timer-control-group {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      font-size: 0.9rem;
     }
 
     #timer-toggle {
@@ -540,32 +542,12 @@
       height: 1rem;
     }
 
-    #timer-duration {
-      padding: 0.5rem 0.75rem;
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      background: var(--bg);
-      color: var(--fg);
-      font-family: inherit;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-
-    #timer-duration:focus {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-    }
-
     #timer-display {
       font-size: 1.1rem;
       font-weight: 600;
       color: var(--accent);
-      min-width: 4rem;
+      min-width: 3rem;
       text-align: center;
-    }
-
-    #timer-display.warning {
-      color: #f59e0b;
     }
 
     #timer-display.critical {
@@ -825,22 +807,13 @@
       <span id="current-streak" class="current-streak-none">No streak</span>
       <span id="best-streak" class="best-streak-none">Best: &mdash;</span>
     </div>
-    <div id="status" aria-live="polite">Player X's turn</div>
-    <div id="timer-controls">
-      <div class="timer-control-group">
-        <input type="checkbox" id="timer-toggle" aria-label="Enable turn timer" />
-        <label for="timer-toggle">Turn Timer</label>
-      </div>
-      <div class="timer-control-group">
-        <label for="timer-duration">Duration:</label>
-        <select id="timer-duration" aria-label="Timer duration in seconds">
-          <option value="5">5s</option>
-          <option value="10" selected>10s</option>
-          <option value="15">15s</option>
-          <option value="30">30s</option>
-        </select>
-      </div>
+    <div id="turn-row">
+      <div id="status" aria-live="polite">Player X's turn</div>
       <div id="timer-display" aria-live="polite" aria-label="Remaining time"></div>
+    </div>
+    <div id="timer-controls">
+      <input type="checkbox" id="timer-toggle" aria-label="Enable turn timer" />
+      <label for="timer-toggle">Turn Timer</label>
     </div>
     <div id="game-area">
       <div id="board" role="grid" aria-label="Tic-tac-toe board">
@@ -1201,8 +1174,8 @@
       const score_x_label = document.getElementById('score-x-label');
       const score_o_label = document.getElementById('score-o-label');
       const timer_toggle = document.getElementById('timer-toggle');
-      const timer_duration_select = document.getElementById('timer-duration');
       const timer_display = document.getElementById('timer-display');
+      const TURN_TIMER_SECONDS = 10;
 
       let board_state = Array(9).fill('');
       let move_history = [];
@@ -1222,8 +1195,7 @@
 
       // Timer state
       let timer_enabled = false;
-      let timer_duration_seconds = 10;
-      let timer_remaining_seconds = 10;
+      let timer_remaining_seconds = TURN_TIMER_SECONDS;
       let timer_interval_id = null;
 
       function load_player_names() {
@@ -1279,38 +1251,32 @@
 
       function save_timer_state() {
         localStorage.setItem('tic-tac-toe-timer-enabled', String(timer_enabled));
-        localStorage.setItem('tic-tac-toe-timer-duration', String(timer_duration_seconds));
       }
 
       function load_timer_state() {
         const stored_enabled = localStorage.getItem('tic-tac-toe-timer-enabled');
-        const stored_duration = localStorage.getItem('tic-tac-toe-timer-duration');
         timer_enabled = stored_enabled === 'true';
-        timer_duration_seconds = stored_duration ? Number(stored_duration) : 10;
-        timer_remaining_seconds = timer_duration_seconds;
+        timer_remaining_seconds = TURN_TIMER_SECONDS;
         timer_toggle.checked = timer_enabled;
-        timer_duration_select.value = String(timer_duration_seconds);
         update_timer_display();
       }
 
       function update_timer_display() {
         if (!timer_enabled || game_over) {
           timer_display.textContent = '';
-          timer_display.classList.remove('warning', 'critical');
+          timer_display.classList.remove('critical');
           return;
         }
         timer_display.textContent = String(timer_remaining_seconds) + 's';
-        timer_display.classList.remove('warning', 'critical');
+        timer_display.classList.remove('critical');
         if (timer_remaining_seconds <= 3) {
           timer_display.classList.add('critical');
-        } else if (timer_remaining_seconds <= 5) {
-          timer_display.classList.add('warning');
         }
       }
 
       function start_timer() {
         if (!timer_enabled || game_over || timer_interval_id !== null) return;
-        timer_remaining_seconds = timer_duration_seconds;
+        timer_remaining_seconds = TURN_TIMER_SECONDS;
         update_timer_display();
         timer_interval_id = setInterval(() => {
           timer_remaining_seconds -= 1;
@@ -1327,7 +1293,7 @@
           timer_interval_id = null;
         }
         timer_display.textContent = '';
-        timer_display.classList.remove('warning', 'critical');
+        timer_display.classList.remove('critical');
       }
 
       function reset_timer() {
@@ -1719,14 +1685,6 @@
           start_timer();
         } else {
           stop_timer();
-        }
-      });
-
-      timer_duration_select.addEventListener('change', (e) => {
-        timer_duration_seconds = Number(e.target.value);
-        save_timer_state();
-        if (!game_over) {
-          reset_timer();
         }
       });
 
