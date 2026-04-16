@@ -7,7 +7,7 @@
   <script>
     (function () {
       const stored_palette_theme = localStorage.getItem('tic-tac-toe-palette-theme');
-      const stored_color_theme = localStorage.getItem('tic-tac-toe-theme');
+      const stored_dark_mode = localStorage.getItem('darkMode');
       const prefers_dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
       // Apply palette theme (Classic, Ocean, Sunset, Forest) if saved
@@ -19,7 +19,7 @@
       }
 
       // Apply dark mode if saved or preferred
-      const should_use_dark = stored_color_theme ? stored_color_theme === 'dark' : prefers_dark;
+      const should_use_dark = stored_dark_mode !== null ? stored_dark_mode === 'true' : prefers_dark;
       if (should_use_dark) {
         document.documentElement.classList.add('dark-theme');
       }
@@ -138,6 +138,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html, body { transition: none; }
     }
 
     main {
@@ -1221,7 +1226,7 @@
           html_element.classList.remove('dark-theme');
         }
 
-        localStorage.setItem('tic-tac-toe-theme', new_theme);
+        localStorage.setItem('darkMode', String(new_theme === 'dark'));
         update_theme_toggle_icon();
         update_favicon();
       }
