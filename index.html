@@ -659,6 +659,33 @@
       outline: 2px solid var(--fg);
       outline-offset: 2px;
     }
+
+    #copy-result {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease;
+      display: none;
+    }
+
+    #copy-result.visible {
+      display: inline-block;
+    }
+
+    #copy-result:hover {
+      background: var(--accent-hover);
+    }
+
+    #copy-result:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
   </style>
 </head>
 <body>
@@ -722,6 +749,7 @@
       <button class="cell" data-index="8" aria-label="Cell 9"></button>
     </div>
     <div id="controls">
+      <button id="copy-result" type="button">Copy Result</button>
       <button id="reset" type="button">Reset Game</button>
       <button id="reset-scores" type="button">Reset Scores</button>
       <button id="change-names" type="button">Change Names</button>
@@ -968,6 +996,7 @@
       const status_element = document.getElementById('status');
       const reset_button = document.getElementById('reset');
       const reset_scores_button = document.getElementById('reset-scores');
+      const copy_result_button = document.getElementById('copy-result');
       const score_x_element = document.getElementById('score-x-value');
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
@@ -1211,6 +1240,103 @@
         return board_state.every(cell => cell !== '');
       }
 
+      function get_move_count() {
+        return board_state.filter(cell => cell !== '').length;
+      }
+
+      function get_theme_display_name() {
+        const palette_theme = get_current_palette_theme();
+        const theme_names = {
+          'classic': 'Classic',
+          'ocean': 'Ocean',
+          'sunset': 'Sunset',
+          'forest': 'Forest'
+        };
+        return theme_names[palette_theme] || 'Classic';
+      }
+
+      function generate_result_text(winner_symbol) {
+        const move_count = get_move_count();
+        const theme_name = get_theme_display_name();
+        const player_x_display = get_display_name('X');
+        const player_o_display = get_display_name('O');
+
+        let result_text = 'Tic-Tac-Toe Result\n';
+        result_text += `${player_x_display} vs ${player_o_display}\n`;
+
+        if (winner_symbol) {
+          const winner_display = get_display_name(winner_symbol);
+          result_text += `Winner: ${winner_display} (${winner_symbol}) in ${move_count} moves\n`;
+        } else {
+          result_text += `Result: Draw in ${move_count} moves\n`;
+        }
+
+        result_text += `Score: X ${score_x_wins} - O ${score_o_wins} - Draws ${score_draws}\n`;
+        result_text += `Theme: ${theme_name}`;
+
+        return result_text;
+      }
+
+      function copy_result_to_clipboard(text) {
+        return new Promise((resolve) => {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+              resolve(true);
+            }).catch(() => {
+              fallback_copy_to_clipboard(text);
+              resolve(true);
+            });
+          } else {
+            fallback_copy_to_clipboard(text);
+            resolve(true);
+          }
+        });
+      }
+
+      function fallback_copy_to_clipboard(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+        } catch (e) {
+          console.error('Fallback copy failed:', e);
+        }
+        document.body.removeChild(textarea);
+      }
+
+      function show_copied_feedback() {
+        const original_text = copy_result_button.textContent;
+        copy_result_button.textContent = 'Copied!';
+        setTimeout(() => {
+          copy_result_button.textContent = original_text;
+        }, 1500);
+      }
+
+      function show_copy_result_button() {
+        copy_result_button.classList.add('visible');
+      }
+
+      function hide_copy_result_button() {
+        copy_result_button.classList.remove('visible');
+      }
+
+      copy_result_button.addEventListener('click', async () => {
+        if (game_over) {
+          let winner = null;
+          const win_result = detect_winner();
+          if (win_result) {
+            winner = win_result.player;
+          }
+          const result_text = generate_result_text(winner);
+          await copy_result_to_clipboard(result_text);
+          show_copied_feedback();
+        }
+      });
+
       function create_x_mark_svg() {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', '0 0 100 100');
@@ -1288,6 +1414,7 @@
           disable_remaining_cells();
           trigger_confetti();
           play_win_sound();
+          show_copy_result_button();
           return;
         }
 
@@ -1310,6 +1437,7 @@
           board_element.addEventListener('animationend', remove_shake);
 
           play_draw_sound();
+          show_copy_result_button();
           return;
         }
 
@@ -1330,6 +1458,7 @@
         board_state = Array(9).fill('');
         current_player = 'X';
         game_over = false;
+        hide_copy_result_button();
         board_cells.forEach(cell => {
           cell.innerHTML = '';
           cell.classList.remove('x', 'o', 'winning');
