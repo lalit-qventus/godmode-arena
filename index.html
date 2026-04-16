@@ -184,6 +184,27 @@
     #scoreboard .score-o { color: var(--o-color); }
     #scoreboard .score-draws { color: var(--muted); }
 
+    #streakboard {
+      display: flex;
+      gap: 1.25rem;
+      padding: 0.5rem 1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: var(--fg);
+      margin-top: 0.5rem;
+    }
+
+    #streakboard .current-streak-x { color: var(--x-color); }
+    #streakboard .current-streak-o { color: var(--o-color); }
+    #streakboard .current-streak-none { color: var(--muted); }
+    #streakboard .best-streak-x { color: var(--x-color); }
+    #streakboard .best-streak-o { color: var(--o-color); }
+    #streakboard .best-streak-none { color: var(--muted); }
+
     #controls {
       display: flex;
       gap: 0.75rem;
@@ -693,6 +714,10 @@
       <span class="score-o"><span id="score-o-label">O</span>: <span id="score-o-value">0</span></span>
       <span class="score-draws">Draws: <span id="score-draws-value">0</span></span>
     </div>
+    <div id="streakboard" aria-live="polite" aria-label="Win streaks">
+      <span id="current-streak" class="current-streak-none">No streak</span>
+      <span id="best-streak" class="best-streak-none">Best: &mdash;</span>
+    </div>
     <div id="status" aria-live="polite">Player X's turn</div>
     <div id="timer-controls">
       <div class="timer-control-group">
@@ -1038,6 +1063,8 @@
       const score_x_element = document.getElementById('score-x-value');
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
+      const current_streak_element = document.getElementById('current-streak');
+      const best_streak_element = document.getElementById('best-streak');
       const theme_toggle_button = document.getElementById('theme-toggle');
       const audio_toggle_button = document.getElementById('audio-toggle');
       const theme_selector = document.getElementById('theme-selector');
@@ -1060,6 +1087,10 @@
       let score_x_wins = 0;
       let score_o_wins = 0;
       let score_draws = 0;
+      let current_streak_player = null;
+      let current_streak_count = 0;
+      let best_streak_player = null;
+      let best_streak_count = 0;
       let player_name_x = '';
       let player_name_o = '';
       let names_set = false;
@@ -1116,6 +1147,9 @@
       function update_scoreboard_labels() {
         score_x_label.textContent = player_name_x ? player_name_x : 'X';
         score_o_label.textContent = player_name_o ? player_name_o : 'O';
+        if (typeof render_streakboard === 'function') {
+          render_streakboard();
+        }
       }
 
       function save_timer_state() {
@@ -1260,6 +1294,51 @@
         score_x_element.textContent = String(score_x_wins);
         score_o_element.textContent = String(score_o_wins);
         score_draws_element.textContent = String(score_draws);
+        render_streakboard();
+      }
+
+      function render_streakboard() {
+        current_streak_element.classList.remove('current-streak-x', 'current-streak-o', 'current-streak-none');
+        if (current_streak_count === 0 || current_streak_player === null) {
+          current_streak_element.textContent = 'No streak';
+          current_streak_element.classList.add('current-streak-none');
+        } else {
+          current_streak_element.textContent =
+            `${get_display_name(current_streak_player)}: ${current_streak_count} streak`;
+          current_streak_element.classList.add(
+            current_streak_player === 'X' ? 'current-streak-x' : 'current-streak-o'
+          );
+        }
+
+        best_streak_element.classList.remove('best-streak-x', 'best-streak-o', 'best-streak-none');
+        if (best_streak_count === 0 || best_streak_player === null) {
+          best_streak_element.innerHTML = 'Best: &mdash;';
+          best_streak_element.classList.add('best-streak-none');
+        } else {
+          best_streak_element.textContent =
+            `Best: ${get_display_name(best_streak_player)} ${best_streak_count}`;
+          best_streak_element.classList.add(
+            best_streak_player === 'X' ? 'best-streak-x' : 'best-streak-o'
+          );
+        }
+      }
+
+      function record_win_streak(winning_player) {
+        if (current_streak_player === winning_player) {
+          current_streak_count += 1;
+        } else {
+          current_streak_player = winning_player;
+          current_streak_count = 1;
+        }
+        if (current_streak_count > best_streak_count) {
+          best_streak_player = current_streak_player;
+          best_streak_count = current_streak_count;
+        }
+      }
+
+      function reset_current_streak() {
+        current_streak_player = null;
+        current_streak_count = 0;
       }
 
       function detect_winner() {
@@ -1353,6 +1432,7 @@
           } else {
             score_o_wins += 1;
           }
+          record_win_streak(winning_player);
           highlight_winning_line(winning_result.line);
           render_scoreboard();
           const winning_display_name = get_display_name(winning_player);
@@ -1370,6 +1450,7 @@
           first_player_this_round = first_player_this_round === 'X' ? 'O' : 'X';
           stop_timer();
           score_draws += 1;
+          reset_current_streak();
           render_scoreboard();
           render_status("Draw", 'draw');
           current_player_was_winner = false;
@@ -1423,6 +1504,10 @@
         score_x_wins = 0;
         score_o_wins = 0;
         score_draws = 0;
+        current_streak_player = null;
+        current_streak_count = 0;
+        best_streak_player = null;
+        best_streak_count = 0;
         render_scoreboard();
       }
 
