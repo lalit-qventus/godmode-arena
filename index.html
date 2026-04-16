@@ -191,6 +191,18 @@
     #scoreboard .score-o { color: var(--o-color); }
     #scoreboard .score-draws { color: var(--muted); }
 
+    #round-counter {
+      padding: 0.4rem 1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: var(--fg);
+      margin-top: 0.5rem;
+    }
+
     #streakboard {
       display: flex;
       gap: 1.25rem;
@@ -904,6 +916,9 @@
       <span class="score-o"><span id="score-o-label">O</span>: <span id="score-o-value">0</span></span>
       <span class="score-draws">Draws: <span id="score-draws-value">0</span></span>
     </div>
+    <div id="round-counter" aria-live="polite" aria-atomic="true" aria-label="Current round number">
+      Round <span id="round-count-value">1</span>
+    </div>
     <div id="streakboard" aria-live="polite" aria-label="Win streaks">
       <span id="current-streak" class="current-streak-none">No streak</span>
       <span id="best-streak" class="best-streak-none">Best: &mdash;</span>
@@ -1264,6 +1279,7 @@
       const score_x_element = document.getElementById('score-x-value');
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
+      const round_count_element = document.getElementById('round-count-value');
       const current_streak_element = document.getElementById('current-streak');
       const best_streak_element = document.getElementById('best-streak');
       const theme_toggle_button = document.getElementById('theme-toggle');
@@ -1292,6 +1308,7 @@
       let score_x_wins = 0;
       let score_o_wins = 0;
       let score_draws = 0;
+      let round_count = 1;
       let current_streak_player = null;
       let current_streak_count = 0;
       let best_streak_player = null;
@@ -1306,6 +1323,33 @@
       let timer_interval_id = null;
 
       const GAME_STATE_STORAGE_KEY = 'tictactoe-state';
+      const ROUND_COUNT_STORAGE_KEY = 'ttt_round_count';
+
+      function load_round_count() {
+        const raw_stored_round_count = localStorage.getItem(ROUND_COUNT_STORAGE_KEY);
+        if (raw_stored_round_count === null) {
+          round_count = 1;
+          return;
+        }
+        const parsed_round_count = parseInt(raw_stored_round_count, 10);
+        if (!Number.isFinite(parsed_round_count) || parsed_round_count < 1) {
+          round_count = 1;
+          return;
+        }
+        round_count = parsed_round_count;
+      }
+
+      function save_round_count() {
+        try {
+          localStorage.setItem(ROUND_COUNT_STORAGE_KEY, String(round_count));
+        } catch (round_count_storage_error) {
+          console.error('Failed to persist round count:', round_count_storage_error);
+        }
+      }
+
+      function render_round_counter() {
+        round_count_element.textContent = String(round_count);
+      }
 
       function save_game_state() {
         const persisted_game_state = {
@@ -1422,6 +1466,7 @@
       function clear_all_persistence() {
         const persistence_keys_to_clear = [
           GAME_STATE_STORAGE_KEY,
+          ROUND_COUNT_STORAGE_KEY,
           'tic-tac-toe-player-x',
           'tic-tac-toe-player-o',
           'tic-tac-toe-theme',
@@ -1943,6 +1988,7 @@
       }
 
       function reset_game() {
+        const previous_round_was_complete = game_over;
         cleanup_confetti();
         stop_timer();
         const board_element = document.getElementById('board');
@@ -1952,6 +1998,11 @@
         first_player_this_round = Math.random() < 0.5 ? 'X' : 'O';
         current_player = first_player_this_round;
         game_over = false;
+        if (previous_round_was_complete) {
+          round_count += 1;
+          render_round_counter();
+          save_round_count();
+        }
         current_player_was_winner = false;
         board_cells.forEach(cell => {
           cell.innerHTML = '';
@@ -1975,7 +2026,10 @@
         current_streak_count = 0;
         best_streak_player = null;
         best_streak_count = 0;
+        round_count = 1;
         render_scoreboard();
+        render_round_counter();
+        save_round_count();
         save_game_state();
       }
 
@@ -2051,8 +2105,10 @@
       load_timer_state();
       load_audio_state();
       load_palette_theme();
+      load_round_count();
       const game_state_was_restored = restore_game_state_from_storage();
       render_scoreboard();
+      render_round_counter();
       render_history();
       update_theme_toggle_icon();
       update_audio_toggle_icon();
