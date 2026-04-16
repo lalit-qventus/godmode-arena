@@ -863,6 +863,7 @@
       <button id="undo" type="button" disabled>Undo</button>
       <button id="reset" type="button">Reset Game</button>
       <button id="reset-scores" type="button">Reset Scores</button>
+      <button id="clear-all" type="button">Clear All</button>
       <button id="change-names" type="button">Change Names</button>
       <button id="audio-toggle" type="button" aria-label="Toggle sound effects"></button>
     </div>
@@ -1183,6 +1184,7 @@
       const undo_button = document.getElementById('undo');
       const history_list_element = document.getElementById('history-list');
       const history_empty_element = document.getElementById('history-empty');
+      const clear_all_button = document.getElementById('clear-all');
       const score_x_element = document.getElementById('score-x-value');
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
@@ -1223,6 +1225,139 @@
       let timer_enabled = false;
       let timer_remaining_seconds = TURN_TIMER_SECONDS;
       let timer_interval_id = null;
+
+      const GAME_STATE_STORAGE_KEY = 'tictactoe-state';
+
+      function save_game_state() {
+        const persisted_game_state = {
+          board_state,
+          current_player,
+          first_player_this_round,
+          game_over,
+          score_x_wins,
+          score_o_wins,
+          score_draws,
+          current_streak_player,
+          current_streak_count,
+          best_streak_player,
+          best_streak_count,
+        };
+        try {
+          localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(persisted_game_state));
+        } catch (storage_write_error) {
+          console.error('Failed to persist game state:', storage_write_error);
+        }
+      }
+
+      function restore_game_state_from_storage() {
+        const raw_stored_game_state = localStorage.getItem(GAME_STATE_STORAGE_KEY);
+        if (!raw_stored_game_state) return false;
+        let parsed_game_state;
+        try {
+          parsed_game_state = JSON.parse(raw_stored_game_state);
+        } catch (json_parse_error) {
+          console.warn('Corrupt tictactoe-state in localStorage, starting fresh:', json_parse_error);
+          localStorage.removeItem(GAME_STATE_STORAGE_KEY);
+          return false;
+        }
+        if (
+          !parsed_game_state ||
+          !Array.isArray(parsed_game_state.board_state) ||
+          parsed_game_state.board_state.length !== 9 ||
+          !parsed_game_state.board_state.every(cell_value =>
+            cell_value === '' || cell_value === 'X' || cell_value === 'O'
+          ) ||
+          (parsed_game_state.current_player !== 'X' && parsed_game_state.current_player !== 'O') ||
+          (parsed_game_state.first_player_this_round !== 'X' &&
+            parsed_game_state.first_player_this_round !== 'O') ||
+          typeof parsed_game_state.game_over !== 'boolean' ||
+          !Number.isFinite(parsed_game_state.score_x_wins) ||
+          !Number.isFinite(parsed_game_state.score_o_wins) ||
+          !Number.isFinite(parsed_game_state.score_draws)
+        ) {
+          console.warn('Invalid tictactoe-state shape, starting fresh');
+          localStorage.removeItem(GAME_STATE_STORAGE_KEY);
+          return false;
+        }
+        board_state = parsed_game_state.board_state.slice();
+        current_player = parsed_game_state.current_player;
+        first_player_this_round = parsed_game_state.first_player_this_round;
+        game_over = parsed_game_state.game_over;
+        score_x_wins = parsed_game_state.score_x_wins;
+        score_o_wins = parsed_game_state.score_o_wins;
+        score_draws = parsed_game_state.score_draws;
+        current_streak_player =
+          parsed_game_state.current_streak_player === 'X' ||
+          parsed_game_state.current_streak_player === 'O'
+            ? parsed_game_state.current_streak_player
+            : null;
+        current_streak_count = Number.isFinite(parsed_game_state.current_streak_count)
+          ? parsed_game_state.current_streak_count
+          : 0;
+        best_streak_player =
+          parsed_game_state.best_streak_player === 'X' ||
+          parsed_game_state.best_streak_player === 'O'
+            ? parsed_game_state.best_streak_player
+            : null;
+        best_streak_count = Number.isFinite(parsed_game_state.best_streak_count)
+          ? parsed_game_state.best_streak_count
+          : 0;
+        return true;
+      }
+
+      function render_restored_board() {
+        for (let cell_index = 0; cell_index < board_cells.length; cell_index += 1) {
+          const cell_button = board_cells[cell_index];
+          const stored_mark = board_state[cell_index];
+          cell_button.innerHTML = '';
+          cell_button.classList.remove('x', 'o', 'winning');
+          cell_button.disabled = false;
+          if (stored_mark === 'X' || stored_mark === 'O') {
+            const mark_svg = stored_mark === 'X' ? create_x_mark_svg() : create_o_mark_svg();
+            cell_button.appendChild(mark_svg);
+            cell_button.classList.add(stored_mark.toLowerCase());
+          }
+        }
+        if (game_over) {
+          const winning_result = detect_winner();
+          if (winning_result) {
+            highlight_winning_line(winning_result.line);
+            const winning_display_name = get_display_name(winning_result.player);
+            render_status(
+              `${winning_display_name} wins!`,
+              winning_result.player === 'X' ? 'win-x' : 'win-o'
+            );
+            current_player_was_winner = true;
+          } else {
+            render_status('Draw', 'draw');
+            current_player_was_winner = false;
+          }
+          disable_remaining_cells();
+        } else {
+          render_status(`${get_display_name(current_player)}'s turn`);
+        }
+      }
+
+      function clear_all_persistence() {
+        const persistence_keys_to_clear = [
+          GAME_STATE_STORAGE_KEY,
+          'tic-tac-toe-player-x',
+          'tic-tac-toe-player-o',
+          'tic-tac-toe-theme',
+          'tic-tac-toe-palette-theme',
+          'tic-tac-toe-audio-enabled',
+          'tic-tac-toe-timer-enabled',
+          'tic-tac-toe-timer-duration',
+        ];
+        persistence_keys_to_clear.forEach(storage_key => {
+          try {
+            localStorage.removeItem(storage_key);
+          } catch (storage_remove_error) {
+            console.error('Failed to remove key:', storage_key, storage_remove_error);
+          }
+        });
+        window.location.reload();
+      }
 
       function load_player_names() {
         player_name_x = localStorage.getItem('tic-tac-toe-player-x') || '';
@@ -1337,6 +1472,7 @@
         stop_timer();
         render_status(`${get_display_name(current_player)} ran out of time!`);
         current_player = current_player === 'X' ? 'O' : 'X';
+        save_game_state();
         setTimeout(() => {
           if (!game_over) {
             render_status(`${get_display_name(current_player)}'s turn`);
@@ -1615,6 +1751,7 @@
           update_favicon();
           disable_remaining_cells();
           update_undo_button_state();
+          save_game_state();
           trigger_confetti();
           play_win_sound();
           return;
@@ -1642,6 +1779,7 @@
           };
           board_element.addEventListener('animationend', remove_shake);
 
+          save_game_state();
           play_draw_sound();
           return;
         }
@@ -1650,6 +1788,7 @@
         render_status(`${get_display_name(current_player)}'s turn`);
         update_favicon();
         reset_timer();
+        save_game_state();
       }
 
       function disable_remaining_cells() {
@@ -1701,6 +1840,7 @@
         update_favicon();
         render_history();
         start_timer();
+        save_game_state();
       }
 
       function reset_scores() {
@@ -1712,12 +1852,14 @@
         best_streak_player = null;
         best_streak_count = 0;
         render_scoreboard();
+        save_game_state();
       }
 
       board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
       reset_button.addEventListener('click', reset_game);
       reset_scores_button.addEventListener('click', reset_scores);
       undo_button.addEventListener('click', undo_last_move);
+      clear_all_button.addEventListener('click', clear_all_persistence);
       theme_toggle_button.addEventListener('click', toggle_theme);
       theme_buttons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1770,6 +1912,7 @@
       load_timer_state();
       load_audio_state();
       load_palette_theme();
+      const game_state_was_restored = restore_game_state_from_storage();
       render_scoreboard();
       render_history();
       update_theme_toggle_icon();
@@ -1777,6 +1920,12 @@
       update_favicon();
       if (!names_set) {
         show_names_modal();
+      } else if (game_state_was_restored) {
+        render_restored_board();
+        update_favicon();
+        if (!game_over) {
+          start_timer();
+        }
       } else {
         render_status(`${get_display_name(first_player_this_round)}'s turn`);
         show_first_player_announcement(first_player_this_round);
