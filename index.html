@@ -680,6 +680,113 @@
       outline: 2px solid var(--fg);
       outline-offset: 2px;
     }
+
+    #game-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    @media (min-width: 640px) {
+      #game-area {
+        flex-direction: row;
+        align-items: flex-start;
+      }
+    }
+
+    #history-panel {
+      width: 12rem;
+      max-height: 18rem;
+      overflow-y: auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      color: var(--fg);
+    }
+
+    #history-panel h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--fg);
+    }
+
+    #history-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+
+    #history-list li {
+      padding: 0.3rem 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 0.35rem;
+      align-items: baseline;
+    }
+
+    #history-list li:last-child {
+      border-bottom: none;
+    }
+
+    .history-move-number {
+      color: var(--muted);
+      font-weight: 600;
+      min-width: 1.75rem;
+    }
+
+    .history-player-x {
+      color: var(--x-color);
+      font-weight: 700;
+    }
+
+    .history-player-o {
+      color: var(--o-color);
+      font-weight: 700;
+    }
+
+    .history-cell-name {
+      color: var(--fg);
+    }
+
+    #history-empty {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+
+    #undo {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+    }
+
+    #undo:hover:not(:disabled) {
+      background: var(--cell-hover);
+      border-color: var(--muted);
+    }
+
+    #undo:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
+
+    #undo:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -735,18 +842,26 @@
       </div>
       <div id="timer-display" aria-live="polite" aria-label="Remaining time"></div>
     </div>
-    <div id="board" role="grid" aria-label="Tic-tac-toe board">
-      <button class="cell" data-index="0" aria-label="Cell 1"></button>
-      <button class="cell" data-index="1" aria-label="Cell 2"></button>
-      <button class="cell" data-index="2" aria-label="Cell 3"></button>
-      <button class="cell" data-index="3" aria-label="Cell 4"></button>
-      <button class="cell" data-index="4" aria-label="Cell 5"></button>
-      <button class="cell" data-index="5" aria-label="Cell 6"></button>
-      <button class="cell" data-index="6" aria-label="Cell 7"></button>
-      <button class="cell" data-index="7" aria-label="Cell 8"></button>
-      <button class="cell" data-index="8" aria-label="Cell 9"></button>
+    <div id="game-area">
+      <div id="board" role="grid" aria-label="Tic-tac-toe board">
+        <button class="cell" data-index="0" aria-label="Cell 1"></button>
+        <button class="cell" data-index="1" aria-label="Cell 2"></button>
+        <button class="cell" data-index="2" aria-label="Cell 3"></button>
+        <button class="cell" data-index="3" aria-label="Cell 4"></button>
+        <button class="cell" data-index="4" aria-label="Cell 5"></button>
+        <button class="cell" data-index="5" aria-label="Cell 6"></button>
+        <button class="cell" data-index="6" aria-label="Cell 7"></button>
+        <button class="cell" data-index="7" aria-label="Cell 8"></button>
+        <button class="cell" data-index="8" aria-label="Cell 9"></button>
+      </div>
+      <aside id="history-panel" aria-label="Move history">
+        <h2>Move History</h2>
+        <div id="history-empty">No moves yet</div>
+        <ol id="history-list" aria-live="polite"></ol>
+      </aside>
     </div>
     <div id="controls">
+      <button id="undo" type="button" disabled>Undo</button>
       <button id="reset" type="button">Reset Game</button>
       <button id="reset-scores" type="button">Reset Scores</button>
       <button id="change-names" type="button">Change Names</button>
@@ -1056,10 +1171,19 @@
         [0, 4, 8], [2, 4, 6],
       ];
 
+      const CELL_POSITION_NAMES = [
+        'top-left', 'top', 'top-right',
+        'left', 'center', 'right',
+        'bottom-left', 'bottom', 'bottom-right',
+      ];
+
       const board_cells = Array.from(document.querySelectorAll('.cell'));
       const status_element = document.getElementById('status');
       const reset_button = document.getElementById('reset');
       const reset_scores_button = document.getElementById('reset-scores');
+      const undo_button = document.getElementById('undo');
+      const history_list_element = document.getElementById('history-list');
+      const history_empty_element = document.getElementById('history-empty');
       const score_x_element = document.getElementById('score-x-value');
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
@@ -1081,6 +1205,7 @@
       const timer_display = document.getElementById('timer-display');
 
       let board_state = Array(9).fill('');
+      let move_history = [];
       let current_player = 'X';
       let first_player_this_round = 'X';
       let game_over = false;
@@ -1408,18 +1533,72 @@
         return svg;
       }
 
+      function render_history() {
+        history_list_element.innerHTML = '';
+        if (move_history.length === 0) {
+          history_empty_element.style.display = '';
+        } else {
+          history_empty_element.style.display = 'none';
+          move_history.forEach((entry, index) => {
+            const li = document.createElement('li');
+
+            const move_number_span = document.createElement('span');
+            move_number_span.className = 'history-move-number';
+            move_number_span.textContent = `${index + 1}.`;
+
+            const player_span = document.createElement('span');
+            player_span.className = entry.player === 'X' ? 'history-player-x' : 'history-player-o';
+            player_span.textContent = entry.player;
+
+            const to_span = document.createElement('span');
+            to_span.textContent = 'to';
+
+            const cell_name_span = document.createElement('span');
+            cell_name_span.className = 'history-cell-name';
+            cell_name_span.textContent = CELL_POSITION_NAMES[entry.cell];
+
+            li.append(move_number_span, player_span, to_span, cell_name_span);
+            history_list_element.appendChild(li);
+          });
+          history_list_element.scrollTop = history_list_element.scrollHeight;
+        }
+        update_undo_button_state();
+      }
+
+      function update_undo_button_state() {
+        undo_button.disabled = move_history.length === 0 || game_over;
+      }
+
+      function undo_last_move() {
+        if (game_over || move_history.length === 0) return;
+        const last_entry = move_history.pop();
+        const cell_index = last_entry.cell;
+        const cell_element = board_cells[cell_index];
+        board_state[cell_index] = '';
+        cell_element.innerHTML = '';
+        cell_element.classList.remove('x', 'o', 'winning');
+        cell_element.disabled = false;
+        current_player = last_entry.player;
+        render_status(`${get_display_name(current_player)}'s turn`);
+        update_favicon();
+        render_history();
+        reset_timer();
+      }
+
       function handle_cell_click(event) {
         if (game_over) return;
         const cell_index = Number(event.currentTarget.dataset.index);
         if (board_state[cell_index] !== '') return;
 
         board_state[cell_index] = current_player;
+        move_history.push({ cell: cell_index, player: current_player });
         event.currentTarget.textContent = '';
         const mark_svg = current_player === 'X' ? create_x_mark_svg() : create_o_mark_svg();
         event.currentTarget.appendChild(mark_svg);
         event.currentTarget.classList.add(current_player.toLowerCase());
 
         play_click_sound();
+        render_history();
 
         const winning_result = detect_winner();
         if (winning_result) {
@@ -1440,6 +1619,7 @@
           current_player_was_winner = true;
           update_favicon();
           disable_remaining_cells();
+          update_undo_button_state();
           trigger_confetti();
           play_win_sound();
           return;
@@ -1455,6 +1635,7 @@
           render_status("Draw", 'draw');
           current_player_was_winner = false;
           update_favicon();
+          update_undo_button_state();
 
           // Trigger shake animation
           const board_element = document.getElementById('board');
@@ -1487,6 +1668,7 @@
         const board_element = document.getElementById('board');
         board_element.classList.remove('shake');
         board_state = Array(9).fill('');
+        move_history = [];
         current_player = first_player_this_round;
         game_over = false;
         current_player_was_winner = false;
@@ -1497,6 +1679,7 @@
         });
         render_status(`${get_display_name(first_player_this_round)}'s turn`);
         update_favicon();
+        render_history();
         start_timer();
       }
 
@@ -1514,6 +1697,7 @@
       board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
       reset_button.addEventListener('click', reset_game);
       reset_scores_button.addEventListener('click', reset_scores);
+      undo_button.addEventListener('click', undo_last_move);
       theme_toggle_button.addEventListener('click', toggle_theme);
       theme_buttons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1575,6 +1759,7 @@
       load_audio_state();
       load_palette_theme();
       render_scoreboard();
+      render_history();
       update_theme_toggle_icon();
       update_audio_toggle_icon();
       update_favicon();
