@@ -481,6 +481,32 @@
     @media (prefers-reduced-motion: reduce) {
       #timer-display.critical { animation: none; }
     }
+
+    #audio-toggle {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #audio-toggle:hover {
+      background: var(--cell-hover);
+      border-color: var(--muted);
+    }
+
+    #audio-toggle:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
   </style>
 </head>
 <body>
@@ -541,6 +567,7 @@
       <button id="reset" type="button">Reset Game</button>
       <button id="reset-scores" type="button">Reset Scores</button>
       <button id="change-names" type="button">Change Names</button>
+      <button id="audio-toggle" type="button" aria-label="Toggle sound effects"></button>
     </div>
   </main>
 
@@ -657,6 +684,122 @@
       window.addEventListener('resize', resize_confetti_canvas);
       resize_confetti_canvas();
 
+      // Audio system
+      let audio_context = null;
+      let audio_enabled = true;
+
+      function initialize_audio_context() {
+        if (audio_context) return;
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          audio_context = new AudioContext();
+        } catch (e) {
+          console.error('AudioContext not supported:', e);
+        }
+      }
+
+      function play_click_sound() {
+        if (!audio_enabled || !audio_context) return;
+        if (audio_context.state === 'suspended') {
+          audio_context.resume();
+        }
+        const now = audio_context.currentTime;
+        const duration = 0.05; // 50ms
+
+        const oscillator = audio_context.createOscillator();
+        const gain = audio_context.createGain();
+
+        oscillator.connect(gain);
+        gain.connect(audio_context.destination);
+
+        oscillator.frequency.setValueAtTime(800, now);
+        oscillator.frequency.exponentialRampToValueAtTime(600, now + duration);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+        oscillator.start(now);
+        oscillator.stop(now + duration);
+      }
+
+      function play_win_sound() {
+        if (!audio_enabled || !audio_context) return;
+        if (audio_context.state === 'suspended') {
+          audio_context.resume();
+        }
+        const now = audio_context.currentTime;
+        const duration = 0.5; // 500ms
+
+        // Rising sequence: C (262Hz) -> E (330Hz) -> G (392Hz) -> C (523Hz)
+        const notes = [
+          { freq: 262, start: 0.0, duration: 0.1 },   // C
+          { freq: 330, start: 0.12, duration: 0.1 },  // E
+          { freq: 392, start: 0.24, duration: 0.1 },  // G
+          { freq: 523, start: 0.36, duration: 0.14 }, // C (higher octave)
+        ];
+
+        notes.forEach(note => {
+          const osc = audio_context.createOscillator();
+          const gain = audio_context.createGain();
+
+          osc.connect(gain);
+          gain.connect(audio_context.destination);
+
+          osc.frequency.setValueAtTime(note.freq, now + note.start);
+
+          gain.gain.setValueAtTime(0.3, now + note.start);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + note.start + note.duration);
+
+          osc.start(now + note.start);
+          osc.stop(now + note.start + note.duration);
+        });
+      }
+
+      function play_draw_sound() {
+        if (!audio_enabled || !audio_context) return;
+        if (audio_context.state === 'suspended') {
+          audio_context.resume();
+        }
+        const now = audio_context.currentTime;
+        const duration = 0.3; // 300ms
+
+        const oscillator = audio_context.createOscillator();
+        const gain = audio_context.createGain();
+
+        oscillator.connect(gain);
+        gain.connect(audio_context.destination);
+
+        oscillator.frequency.setValueAtTime(440, now); // A note (neutral/flat)
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+        oscillator.start(now);
+        oscillator.stop(now + duration);
+      }
+
+      function load_audio_state() {
+        const stored_state = localStorage.getItem('tic-tac-toe-audio-enabled');
+        audio_enabled = stored_state !== 'false'; // default true
+      }
+
+      function save_audio_state() {
+        localStorage.setItem('tic-tac-toe-audio-enabled', String(audio_enabled));
+      }
+
+      function update_audio_toggle_icon() {
+        const audio_toggle_button = document.getElementById('audio-toggle');
+        audio_toggle_button.textContent = audio_enabled ? '🔊' : '🔇';
+        audio_toggle_button.setAttribute('aria-label', audio_enabled ? 'Mute sound' : 'Unmute sound');
+      }
+
+      // Initialize audio state on first click
+      document.addEventListener('click', () => {
+        if (!audio_context) {
+          initialize_audio_context();
+        }
+      }, { once: true });
+
       const WIN_LINES = [
         [0, 1, 2], [3, 4, 5], [6, 7, 8],
         [0, 3, 6], [1, 4, 7], [2, 5, 8],
@@ -671,6 +814,7 @@
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
       const theme_toggle_button = document.getElementById('theme-toggle');
+      const audio_toggle_button = document.getElementById('audio-toggle');
       const player_names_modal = document.getElementById('player-names-modal');
       const player_x_input = document.getElementById('player-x-input');
       const player_o_input = document.getElementById('player-o-input');
@@ -933,6 +1077,8 @@
         event.currentTarget.appendChild(mark_svg);
         event.currentTarget.classList.add(current_player.toLowerCase());
 
+        play_click_sound();
+
         const winning_result = detect_winner();
         if (winning_result) {
           const winning_player = winning_result.player;
@@ -949,6 +1095,7 @@
           render_status(`${winning_display_name} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
           disable_remaining_cells();
           trigger_confetti();
+          play_win_sound();
           return;
         }
 
@@ -958,6 +1105,7 @@
           score_draws += 1;
           render_scoreboard();
           render_status("Draw", 'draw');
+          play_draw_sound();
           return;
         }
 
@@ -996,6 +1144,11 @@
       reset_button.addEventListener('click', reset_game);
       reset_scores_button.addEventListener('click', reset_scores);
       theme_toggle_button.addEventListener('click', toggle_theme);
+      audio_toggle_button.addEventListener('click', () => {
+        audio_enabled = !audio_enabled;
+        save_audio_state();
+        update_audio_toggle_icon();
+      });
       set_names_button.addEventListener('click', save_player_names);
       change_names_button.addEventListener('click', show_names_modal);
 
@@ -1026,8 +1179,10 @@
 
       load_player_names();
       load_timer_state();
+      load_audio_state();
       render_scoreboard();
       update_theme_toggle_icon();
+      update_audio_toggle_icon();
       if (!names_set) {
         show_names_modal();
       } else {
