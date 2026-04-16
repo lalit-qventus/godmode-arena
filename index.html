@@ -956,7 +956,7 @@
       <button id="reset-scores" type="button" aria-label="Reset score tally to zero">Reset Scores</button>
       <button id="clear-all" type="button">Clear All</button>
       <button id="change-names" type="button">Change Names</button>
-      <button id="audio-toggle" type="button" aria-label="Toggle sound effects"></button>
+      <button id="audio-toggle" type="button" aria-label="Mute sound effects" aria-pressed="false"></button>
     </div>
   </main>
 
@@ -1246,7 +1246,8 @@
       function update_audio_toggle_icon() {
         const audio_toggle_button = document.getElementById('audio-toggle');
         audio_toggle_button.textContent = audio_enabled ? '🔊' : '🔇';
-        audio_toggle_button.setAttribute('aria-label', audio_enabled ? 'Mute sound' : 'Unmute sound');
+        audio_toggle_button.setAttribute('aria-label', audio_enabled ? 'Mute sound effects' : 'Unmute sound effects');
+        audio_toggle_button.setAttribute('aria-pressed', String(!audio_enabled));
       }
 
       // Initialize audio state on first click
