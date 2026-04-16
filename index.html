@@ -863,8 +863,8 @@
     </div>
     <div id="controls">
       <button id="undo" type="button" disabled>Undo</button>
-      <button id="reset" type="button">Reset Game</button>
-      <button id="reset-scores" type="button">Reset Scores</button>
+      <button id="reset" type="button">New Round</button>
+      <button id="reset-scores" type="button" aria-label="Reset score tally to zero">Reset Scores</button>
       <button id="clear-all" type="button">Clear All</button>
       <button id="change-names" type="button">Change Names</button>
       <button id="audio-toggle" type="button" aria-label="Toggle sound effects"></button>
@@ -1859,7 +1859,11 @@
 
       board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
       reset_button.addEventListener('click', reset_game);
-      reset_scores_button.addEventListener('click', reset_scores);
+      reset_scores_button.addEventListener('click', () => {
+        if (window.confirm('Reset scores to 0?')) {
+          reset_scores();
+        }
+      });
       undo_button.addEventListener('click', undo_last_move);
       clear_all_button.addEventListener('click', clear_all_persistence);
       theme_toggle_button.addEventListener('click', toggle_theme);

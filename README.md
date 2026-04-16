@@ -13,7 +13,8 @@ Two players take turns placing marks on a 3x3 grid. Each round, the first player
 ## Controls
 
 - Click any empty cell to place your mark
-- Click **Reset** at any time to start a new game
+- Click **New Round** at any time to clear the board for a fresh game
+- Click **Reset Scores** to zero the X/O/draw tally (prompts for confirmation; board is preserved)
 - The status line above the board shows whose turn it is, who won, or that the game is a draw
 
 ## Offline / installable
