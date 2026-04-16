@@ -248,6 +248,28 @@
     .cell.x { color: var(--x-color); }
     .cell.o { color: var(--o-color); }
 
+    @media (hover: hover) and (pointer: fine) {
+      #board[data-turn="x"] .cell:empty:hover::before {
+        content: "X";
+        opacity: 0.25;
+        color: var(--x-color);
+        font-size: inherit;
+        font-family: inherit;
+        font-weight: inherit;
+      }
+      #board[data-turn="o"] .cell:empty:hover::before {
+        content: "O";
+        opacity: 0.25;
+        color: var(--o-color);
+        font-size: inherit;
+        font-family: inherit;
+        font-weight: inherit;
+      }
+      #board[data-game-over] .cell:hover::before {
+        content: none;
+      }
+    }
+
     .cell.winning {
       background: var(--winning-bg);
       box-shadow: inset 0 0 0 2px var(--winning-border);
@@ -1472,6 +1494,7 @@
         stop_timer();
         render_status(`${get_display_name(current_player)} ran out of time!`);
         current_player = current_player === 'X' ? 'O' : 'X';
+        update_board_data_attributes();
         save_game_state();
         setTimeout(() => {
           if (!game_over) {
@@ -1539,6 +1562,16 @@
         });
 
         update_favicon();
+      }
+
+      function update_board_data_attributes() {
+        const board_element = document.getElementById('board');
+        board_element.dataset.turn = current_player === 'X' ? 'x' : 'o';
+        if (game_over) {
+          board_element.dataset.gameOver = 'true';
+        } else {
+          delete board_element.dataset.gameOver;
+        }
       }
 
       function render_status(message, css_class) {
@@ -1713,6 +1746,7 @@
         current_player = last_entry.player;
         render_status(`${get_display_name(current_player)}'s turn`);
         update_favicon();
+        update_board_data_attributes();
         render_history();
         reset_timer();
       }
@@ -1749,6 +1783,7 @@
           render_status(`${winning_display_name} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
           current_player_was_winner = true;
           update_favicon();
+          update_board_data_attributes();
           disable_remaining_cells();
           update_undo_button_state();
           save_game_state();
@@ -1766,6 +1801,7 @@
           render_status("Draw", 'draw');
           current_player_was_winner = false;
           update_favicon();
+          update_board_data_attributes();
           update_undo_button_state();
 
           // Trigger shake animation
@@ -1787,6 +1823,7 @@
         current_player = current_player === 'X' ? 'O' : 'X';
         render_status(`${get_display_name(current_player)}'s turn`);
         update_favicon();
+        update_board_data_attributes();
         reset_timer();
         save_game_state();
       }
@@ -1838,6 +1875,7 @@
         render_status(`${get_display_name(first_player_this_round)}'s turn`);
         show_first_player_announcement(first_player_this_round);
         update_favicon();
+        update_board_data_attributes();
         render_history();
         start_timer();
         save_game_state();
@@ -1918,6 +1956,7 @@
       update_theme_toggle_icon();
       update_audio_toggle_icon();
       update_favicon();
+      update_board_data_attributes();
       if (!names_set) {
         show_names_modal();
       } else if (game_state_was_restored) {
