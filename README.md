@@ -8,7 +8,7 @@ Open `index.html` in any modern browser (Chrome, Firefox, Safari, Edge). No buil
 
 ## Rules
 
-Two players take turns placing marks on a 3x3 grid. X goes first, then O. The first player to line up three of their marks in a row, column, or diagonal wins. If all nine cells fill with no winner, the game is a draw.
+Two players take turns placing marks on a 3x3 grid. Each round, the first player (X or O) is chosen at random with equal probability. The first player to line up three of their marks in a row, column, or diagonal wins. If all nine cells fill with no winner, the game is a draw.
 
 ## Controls
 

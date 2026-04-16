@@ -594,6 +594,31 @@
     @media (prefers-reduced-motion: reduce) {
       #board.shake { animation: none; }
       #status.draw { animation: none; }
+      #first-player-announcement.show { animation: none; opacity: 1; }
+    }
+
+    #first-player-announcement {
+      min-height: 1.5rem;
+      margin: 0.25rem 0 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #first-player-announcement.show {
+      animation: first-player-fade 2000ms ease-in-out 1 forwards;
+    }
+    #first-player-announcement.fp-x { color: var(--x-color); }
+    #first-player-announcement.fp-o { color: var(--o-color); }
+
+    @keyframes first-player-fade {
+      0%   { opacity: 0; transform: translateY(-4px); }
+      15%  { opacity: 1; transform: translateY(0); }
+      70%  { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(0); }
     }
 
     #audio-toggle {
@@ -811,6 +836,7 @@
       <div id="status" aria-live="polite">Player X's turn</div>
       <div id="timer-display" aria-live="polite" aria-label="Remaining time"></div>
     </div>
+    <div id="first-player-announcement" aria-live="polite"></div>
     <div id="timer-controls">
       <input type="checkbox" id="timer-toggle" aria-label="Enable turn timer" />
       <label for="timer-toggle">Turn Timer</label>
@@ -1179,8 +1205,8 @@
 
       let board_state = Array(9).fill('');
       let move_history = [];
-      let current_player = 'X';
-      let first_player_this_round = 'X';
+      let first_player_this_round = Math.random() < 0.5 ? 'X' : 'O';
+      let current_player = first_player_this_round;
       let game_over = false;
       let score_x_wins = 0;
       let score_o_wins = 0;
@@ -1228,6 +1254,7 @@
       function save_player_names() {
         const x_name = player_x_input.value.trim();
         const o_name = player_o_input.value.trim();
+        const was_initial_setup = !names_set;
         player_name_x = x_name;
         player_name_o = o_name;
         localStorage.setItem('tic-tac-toe-player-x', player_name_x);
@@ -1237,6 +1264,9 @@
         update_scoreboard_labels();
         if (!game_over) {
           render_status(`${get_display_name(current_player)}'s turn`);
+          if (was_initial_setup) {
+            show_first_player_announcement(first_player_this_round);
+          }
           start_timer();
         }
       }
@@ -1570,7 +1600,6 @@
         if (winning_result) {
           const winning_player = winning_result.player;
           game_over = true;
-          first_player_this_round = first_player_this_round === 'X' ? 'O' : 'X';
           stop_timer();
           if (winning_player === 'X') {
             score_x_wins += 1;
@@ -1593,7 +1622,6 @@
 
         if (is_draw()) {
           game_over = true;
-          first_player_this_round = first_player_this_round === 'X' ? 'O' : 'X';
           stop_timer();
           score_draws += 1;
           reset_current_streak();
@@ -1628,6 +1656,30 @@
         board_cells.forEach(cell => { cell.disabled = true; });
       }
 
+      let first_player_announcement_timeout_id = null;
+      const first_player_announcement_element = document.getElementById('first-player-announcement');
+
+      function show_first_player_announcement(player_symbol) {
+        if (!first_player_announcement_element) return;
+        if (first_player_announcement_timeout_id !== null) {
+          clearTimeout(first_player_announcement_timeout_id);
+          first_player_announcement_timeout_id = null;
+        }
+        first_player_announcement_element.textContent =
+          `${get_display_name(player_symbol)} goes first!`;
+        first_player_announcement_element.classList.remove('show', 'fp-x', 'fp-o');
+        // Force reflow so the animation restarts on repeat calls.
+        void first_player_announcement_element.offsetWidth;
+        first_player_announcement_element.classList.add(
+          'show',
+          player_symbol === 'X' ? 'fp-x' : 'fp-o'
+        );
+        first_player_announcement_timeout_id = setTimeout(() => {
+          first_player_announcement_element.classList.remove('show');
+          first_player_announcement_timeout_id = null;
+        }, 2000);
+      }
+
       function reset_game() {
         cleanup_confetti();
         stop_timer();
@@ -1635,6 +1687,7 @@
         board_element.classList.remove('shake');
         board_state = Array(9).fill('');
         move_history = [];
+        first_player_this_round = Math.random() < 0.5 ? 'X' : 'O';
         current_player = first_player_this_round;
         game_over = false;
         current_player_was_winner = false;
@@ -1644,6 +1697,7 @@
           cell.disabled = false;
         });
         render_status(`${get_display_name(first_player_this_round)}'s turn`);
+        show_first_player_announcement(first_player_this_round);
         update_favicon();
         render_history();
         start_timer();
@@ -1724,7 +1778,8 @@
       if (!names_set) {
         show_names_modal();
       } else {
-        render_status(`${get_display_name('X')}'s turn`);
+        render_status(`${get_display_name(first_player_this_round)}'s turn`);
+        show_first_player_announcement(first_player_this_round);
         start_timer();
       }
     })();
