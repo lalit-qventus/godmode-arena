@@ -876,6 +876,46 @@
       #game-over-modal,
       #game-over-modal .game-over-content { transition: none; }
     }
+
+    #help-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1100; opacity: 0;
+      transition: opacity 200ms ease;
+    }
+    #help-overlay[hidden] { display: none; }
+    #help-overlay.open { opacity: 1; }
+    #help-overlay .help-content {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 0.5rem; padding: 1.5rem 1.75rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      transform: scale(0.92); transition: transform 200ms ease;
+      min-width: 20rem; max-width: min(90vw, 28rem);
+    }
+    #help-overlay.open .help-content { transform: scale(1); }
+    #help-overlay .help-title {
+      margin: 0 0 1rem 0; font-size: 1.5rem;
+      color: var(--fg); text-align: center;
+    }
+    #help-overlay .shortcut-list {
+      list-style: none; margin: 0 0 1.25rem 0; padding: 0;
+      display: grid; grid-template-columns: auto 1fr;
+      gap: 0.5rem 1rem; align-items: center;
+    }
+    #help-overlay .shortcut-list kbd {
+      display: inline-block; min-width: 2rem;
+      padding: 0.15rem 0.5rem; text-align: center;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.9rem; color: var(--fg);
+      background: var(--cell-hover); border: 1px solid var(--border);
+      border-radius: 0.25rem;
+    }
+    #help-overlay .shortcut-list span { color: var(--fg); }
+    #help-overlay .help-close { display: block; margin: 0 auto; }
+    @media (prefers-reduced-motion: reduce) {
+      #help-overlay, #help-overlay .help-content { transition: none; }
+    }
   </style>
 </head>
 <body>
@@ -907,6 +947,13 @@
     <div class="game-over-content">
       <h2 id="game-over-title" class="game-over-title"></h2>
       <button class="modal-button" id="play-again" type="button">Play Again</button>
+    </div>
+  </div>
+  <div id="help-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
+    <div class="help-content">
+      <h2 id="help-title" class="help-title">Keyboard shortcuts</h2>
+      <ul class="shortcut-list" id="shortcut-list"></ul>
+      <button class="modal-button help-close" id="help-close" type="button">Close</button>
     </div>
   </div>
   <main>
@@ -1299,6 +1346,16 @@
       const game_over_modal = document.getElementById('game-over-modal');
       const game_over_title = document.getElementById('game-over-title');
       const play_again_button = document.getElementById('play-again');
+      const help_overlay = document.getElementById('help-overlay');
+      const help_close_button = document.getElementById('help-close');
+      const shortcut_list_element = document.getElementById('shortcut-list');
+      const HELP_SHORTCUTS = [
+        { key: '?', description: 'Show this help' },
+        { key: 'R', description: 'Restart current round' },
+        { key: 'Enter', description: 'Play again when the game-over dialog is open' },
+        { key: 'Esc', description: 'Close dialog' },
+      ];
+      let help_previously_focused_element = null;
       const TURN_TIMER_SECONDS = 10;
 
       let board_state = Array(9).fill('');
@@ -2039,6 +2096,7 @@
       document.addEventListener('keydown', (key_event) => {
         if (key_event.key !== 'r' && key_event.key !== 'R') return;
         if (key_event.ctrlKey || key_event.metaKey || key_event.altKey) return;
+        if (!help_overlay.hidden) return;
         const target = key_event.target;
         if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
         key_event.preventDefault();
@@ -2071,6 +2129,7 @@
       play_again_button.addEventListener('click', handle_play_again);
       document.addEventListener('keydown', (key_event) => {
         if (game_over_modal.hidden) return;
+        if (!help_overlay.hidden) return;
         if (key_event.key === 'Escape' || key_event.key === 'Enter') {
           key_event.preventDefault();
           handle_play_again();
@@ -2078,6 +2137,62 @@
           key_event.preventDefault();
           play_again_button.focus();
         }
+      });
+
+      function render_help_shortcuts() {
+        shortcut_list_element.innerHTML = '';
+        HELP_SHORTCUTS.forEach(shortcut => {
+          const row = document.createElement('li');
+          const key_element = document.createElement('kbd');
+          key_element.textContent = shortcut.key;
+          const desc_element = document.createElement('span');
+          desc_element.textContent = shortcut.description;
+          row.appendChild(key_element);
+          row.appendChild(desc_element);
+          shortcut_list_element.appendChild(row);
+        });
+      }
+      render_help_shortcuts();
+
+      function open_help_overlay() {
+        help_previously_focused_element = document.activeElement;
+        help_overlay.hidden = false;
+        requestAnimationFrame(() => { help_overlay.classList.add('open'); });
+        help_close_button.focus();
+      }
+      function close_help_overlay() {
+        if (help_overlay.hidden) return;
+        help_overlay.classList.remove('open');
+        help_overlay.hidden = true;
+        const restore_target = help_previously_focused_element;
+        help_previously_focused_element = null;
+        if (restore_target && typeof restore_target.focus === 'function') {
+          restore_target.focus();
+        }
+      }
+      function toggle_help_overlay() {
+        if (help_overlay.hidden) open_help_overlay();
+        else close_help_overlay();
+      }
+
+      document.addEventListener('keydown', (key_event) => {
+        if (key_event.key !== '?') return;
+        if (key_event.ctrlKey || key_event.metaKey || key_event.altKey) return;
+        const target = key_event.target;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+        key_event.preventDefault();
+        toggle_help_overlay();
+      });
+      document.addEventListener('keydown', (key_event) => {
+        if (help_overlay.hidden) return;
+        if (key_event.key === 'Escape') {
+          key_event.preventDefault();
+          close_help_overlay();
+        }
+      });
+      help_close_button.addEventListener('click', close_help_overlay);
+      help_overlay.addEventListener('click', (click_event) => {
+        if (click_event.target === help_overlay) close_help_overlay();
       });
 
       timer_toggle.addEventListener('change', (e) => {
