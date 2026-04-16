@@ -796,6 +796,47 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+
+    #game-over-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1100;
+      opacity: 0;
+      transition: opacity 200ms ease;
+    }
+    #game-over-modal[hidden] { display: none; }
+    #game-over-modal.open { opacity: 1; }
+
+    #game-over-modal .game-over-content {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1.75rem 2rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      transform: scale(0.92);
+      transition: transform 200ms ease;
+      min-width: 16rem;
+    }
+    #game-over-modal.open .game-over-content { transform: scale(1); }
+
+    #game-over-modal .game-over-title {
+      margin: 0 0 1.25rem 0;
+      font-size: 1.75rem;
+      color: var(--fg);
+    }
+    #game-over-modal .game-over-title.win-x { color: var(--x-color); }
+    #game-over-modal .game-over-title.win-o { color: var(--o-color); }
+    #game-over-modal .game-over-title.draw { color: var(--muted); }
+
+    @media (prefers-reduced-motion: reduce) {
+      #game-over-modal,
+      #game-over-modal .game-over-content { transition: none; }
+    }
   </style>
 </head>
 <body>
@@ -821,6 +862,12 @@
       <div class="modal-buttons">
         <button class="modal-button" id="set-names">Set Names</button>
       </div>
+    </div>
+  </div>
+  <div id="game-over-modal" role="dialog" aria-modal="true" aria-labelledby="game-over-title" hidden>
+    <div class="game-over-content">
+      <h2 id="game-over-title" class="game-over-title"></h2>
+      <button class="modal-button" id="play-again" type="button">Play Again</button>
     </div>
   </div>
   <main>
@@ -1205,6 +1252,9 @@
       const score_o_label = document.getElementById('score-o-label');
       const timer_toggle = document.getElementById('timer-toggle');
       const timer_display = document.getElementById('timer-display');
+      const game_over_modal = document.getElementById('game-over-modal');
+      const game_over_title = document.getElementById('game-over-title');
+      const play_again_button = document.getElementById('play-again');
       const TURN_TIMER_SECONDS = 10;
 
       let board_state = Array(9).fill('');
@@ -1330,9 +1380,11 @@
               winning_result.player === 'X' ? 'win-x' : 'win-o'
             );
             current_player_was_winner = true;
+            show_game_over_modal('win', winning_result.player);
           } else {
             render_status('Draw', 'draw');
             current_player_was_winner = false;
+            show_game_over_modal('draw');
           }
           disable_remaining_cells();
         } else {
@@ -1756,6 +1808,7 @@
           save_game_state();
           trigger_confetti();
           play_win_sound();
+          show_game_over_modal('win', winning_player);
           return;
         }
 
@@ -1783,6 +1836,7 @@
 
           save_game_state();
           play_draw_sound();
+          show_game_over_modal('draw');
           return;
         }
 
@@ -1819,6 +1873,31 @@
           first_player_announcement_element.classList.remove('show');
           first_player_announcement_timeout_id = null;
         }, 2000);
+      }
+
+      function show_game_over_modal(result_kind, winning_player) {
+        game_over_title.classList.remove('win-x', 'win-o', 'draw');
+        if (result_kind === 'draw') {
+          game_over_title.textContent = 'Draw!';
+          game_over_title.classList.add('draw');
+        } else {
+          game_over_title.textContent = `${get_display_name(winning_player)} wins!`;
+          game_over_title.classList.add(winning_player === 'X' ? 'win-x' : 'win-o');
+        }
+        game_over_modal.hidden = false;
+        requestAnimationFrame(() => { game_over_modal.classList.add('open'); });
+        play_again_button.focus();
+      }
+
+      function close_game_over_modal() {
+        game_over_modal.classList.remove('open');
+        game_over_modal.hidden = true;
+      }
+
+      function handle_play_again() {
+        if (game_over_modal.hidden) return;
+        close_game_over_modal();
+        reset_game();
       }
 
       function reset_game() {
@@ -1875,6 +1954,17 @@
       });
       set_names_button.addEventListener('click', save_player_names);
       change_names_button.addEventListener('click', show_names_modal);
+      play_again_button.addEventListener('click', handle_play_again);
+      document.addEventListener('keydown', (key_event) => {
+        if (game_over_modal.hidden) return;
+        if (key_event.key === 'Escape' || key_event.key === 'Enter') {
+          key_event.preventDefault();
+          handle_play_again();
+        } else if (key_event.key === 'Tab') {
+          key_event.preventDefault();
+          play_again_button.focus();
+        }
+      });
 
       timer_toggle.addEventListener('change', (e) => {
         timer_enabled = e.target.checked;
