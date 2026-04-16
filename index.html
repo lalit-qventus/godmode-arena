@@ -731,6 +731,73 @@
 
   <script>
     (function () {
+      // Favicon system
+      function get_computed_color(css_var_name) {
+        const root_style = getComputedStyle(document.documentElement);
+        return root_style.getPropertyValue(css_var_name).trim();
+      }
+
+      function draw_favicon(display_text, text_color_var, bg_color = null) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 32;
+        const ctx = canvas.getContext('2d');
+
+        // Get colors from CSS custom properties
+        const text_color = get_computed_color(text_color_var);
+        const bg = bg_color ? get_computed_color(bg_color) : get_computed_color('--bg');
+
+        // Fill background
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, 32, 32);
+
+        // Draw text
+        ctx.fillStyle = text_color;
+        ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(display_text, 16, 16);
+
+        return canvas.toDataURL('image/png');
+      }
+
+      function update_favicon() {
+        let favicon_data_url;
+
+        if (game_over) {
+          if (current_player_was_winner) {
+            // Winner: show winner mark with highlight background
+            favicon_data_url = draw_favicon(
+              current_player === 'X' ? 'X' : 'O',
+              current_player === 'X' ? '--x-color' : '--o-color',
+              '--accent'
+            );
+          } else {
+            // Draw: show = mark
+            favicon_data_url = draw_favicon('=', '--muted');
+          }
+        } else {
+          // Game in progress: show current player mark in their color
+          favicon_data_url = draw_favicon(
+            current_player,
+            current_player === 'X' ? '--x-color' : '--o-color'
+          );
+        }
+
+        // Get or create favicon link element
+        let favicon_link = document.querySelector('link[rel="icon"]');
+        if (!favicon_link) {
+          favicon_link = document.createElement('link');
+          favicon_link.rel = 'icon';
+          favicon_link.type = 'image/png';
+          document.head.appendChild(favicon_link);
+        }
+
+        favicon_link.href = favicon_data_url;
+      }
+
+      let current_player_was_winner = false;
+
       // Confetti animation system
       const confetti_canvas = document.getElementById('confetti-canvas');
       const confetti_ctx = confetti_canvas.getContext('2d');
@@ -1155,6 +1222,7 @@
 
         localStorage.setItem('tic-tac-toe-theme', new_theme);
         update_theme_toggle_icon();
+        update_favicon();
       }
 
       function set_palette_theme(theme_name) {
@@ -1177,6 +1245,8 @@
             btn.classList.remove('active');
           }
         });
+
+        update_favicon();
       }
 
       function render_status(message, css_class) {
@@ -1285,6 +1355,8 @@
           render_scoreboard();
           const winning_display_name = get_display_name(winning_player);
           render_status(`${winning_display_name} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
+          current_player_was_winner = true;
+          update_favicon();
           disable_remaining_cells();
           trigger_confetti();
           play_win_sound();
@@ -1297,6 +1369,8 @@
           score_draws += 1;
           render_scoreboard();
           render_status("Draw", 'draw');
+          current_player_was_winner = false;
+          update_favicon();
 
           // Trigger shake animation
           const board_element = document.getElementById('board');
@@ -1315,6 +1389,7 @@
 
         current_player = current_player === 'X' ? 'O' : 'X';
         render_status(`${get_display_name(current_player)}'s turn`);
+        update_favicon();
         reset_timer();
       }
 
@@ -1330,12 +1405,14 @@
         board_state = Array(9).fill('');
         current_player = 'X';
         game_over = false;
+        current_player_was_winner = false;
         board_cells.forEach(cell => {
           cell.innerHTML = '';
           cell.classList.remove('x', 'o', 'winning');
           cell.disabled = false;
         });
         render_status(`${get_display_name('X')}'s turn`);
+        update_favicon();
         start_timer();
       }
 
@@ -1412,6 +1489,7 @@
       render_scoreboard();
       update_theme_toggle_icon();
       update_audio_toggle_icon();
+      update_favicon();
       if (!names_set) {
         show_names_modal();
       } else {
