@@ -1055,6 +1055,7 @@
 
       let board_state = Array(9).fill('');
       let current_player = 'X';
+      let first_player_this_round = 'X';
       let game_over = false;
       let score_x_wins = 0;
       let score_o_wins = 0;
@@ -1345,6 +1346,7 @@
         if (winning_result) {
           const winning_player = winning_result.player;
           game_over = true;
+          first_player_this_round = first_player_this_round === 'X' ? 'O' : 'X';
           stop_timer();
           if (winning_player === 'X') {
             score_x_wins += 1;
@@ -1365,6 +1367,7 @@
 
         if (is_draw()) {
           game_over = true;
+          first_player_this_round = first_player_this_round === 'X' ? 'O' : 'X';
           stop_timer();
           score_draws += 1;
           render_scoreboard();
@@ -1403,7 +1406,7 @@
         const board_element = document.getElementById('board');
         board_element.classList.remove('shake');
         board_state = Array(9).fill('');
-        current_player = 'X';
+        current_player = first_player_this_round;
         game_over = false;
         current_player_was_winner = false;
         board_cells.forEach(cell => {
@@ -1411,7 +1414,7 @@
           cell.classList.remove('x', 'o', 'winning');
           cell.disabled = false;
         });
-        render_status(`${get_display_name('X')}'s turn`);
+        render_status(`${get_display_name(first_player_this_round)}'s turn`);
         update_favicon();
         start_timer();
       }
