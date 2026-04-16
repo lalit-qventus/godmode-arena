@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>R-key reset smoke test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 1rem; }
+    .row { margin: 0.25rem 0; }
+    .pass { color: #0a7d1f; }
+    .fail { color: #c02020; }
+    iframe { width: 360px; height: 520px; border: 1px solid #ccc; }
+    #summary { font-weight: bold; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>R-key reset smoke test</h1>
+  <div id="log"></div>
+  <div id="summary">running...</div>
+  <script>
+    // Seed storage so the names modal does not block the game on test start.
+    try {
+      localStorage.removeItem('tic-tac-toe-game-state');
+      localStorage.removeItem('tic-tac-toe-round-count');
+      localStorage.setItem('tic-tac-toe-player-x', 'X');
+      localStorage.setItem('tic-tac-toe-player-o', 'O');
+    } catch (err) { /* file:// with no storage is acceptable — test will still run */ }
+  </script>
+  <iframe id="game" src="../index.html?test=rkey" title="game under test"></iframe>
+  <script>
+    const log_element = document.getElementById('log');
+    const summary_element = document.getElementById('summary');
+    let pass_count = 0;
+    let fail_count = 0;
+
+    function report(label, passed, detail) {
+      const row = document.createElement('div');
+      row.className = 'row ' + (passed ? 'pass' : 'fail');
+      row.textContent = (passed ? 'PASS' : 'FAIL') + ': ' + label + (detail ? ' — ' + detail : '');
+      log_element.appendChild(row);
+      if (passed) pass_count += 1; else fail_count += 1;
+    }
+
+    function wait_for(predicate, timeout_ms) {
+      return new Promise((resolve, reject) => {
+        const start = Date.now();
+        (function poll() {
+          let passed;
+          try { passed = predicate(); } catch (err) { passed = false; }
+          if (passed) return resolve();
+          if (Date.now() - start > timeout_ms) return reject(new Error('timeout'));
+          setTimeout(poll, 25);
+        })();
+      });
+    }
+
+    function dispatch_key(iframe_document, key) {
+      const event = new iframe_document.defaultView.KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      iframe_document.dispatchEvent(event);
+    }
+
+    function board_is_empty(iframe_document) {
+      const cells = iframe_document.querySelectorAll('.cell');
+      if (cells.length !== 9) return false;
+      return Array.from(cells).every(cell => cell.textContent.trim() === '' && cell.innerHTML.trim() === '');
+    }
+
+    function turn_is_x(iframe_document) {
+      const status = iframe_document.getElementById('status');
+      if (!status) return false;
+      return /X/i.test(status.textContent) && !/O'?s turn/i.test(status.textContent);
+    }
+
+    const iframe = document.getElementById('game');
+
+    iframe.addEventListener('load', async () => {
+      const iframe_document = iframe.contentDocument;
+      const iframe_window = iframe.contentWindow;
+
+      try {
+        await wait_for(() => iframe_document.querySelectorAll('.cell').length === 9, 5000);
+
+        // Place two moves so the board has state to clear.
+        const cells_before_reset = iframe_document.querySelectorAll('.cell');
+        cells_before_reset[0].click();
+        cells_before_reset[4].click();
+        await wait_for(() => {
+          const cells = iframe_document.querySelectorAll('.cell');
+          const filled = Array.from(cells).filter(cell => cell.innerHTML.trim() !== '').length;
+          return filled >= 2;
+        }, 2000);
+
+        // Capture score state to verify R does not mutate it.
+        const x_wins_before = iframe_document.getElementById('score-x-value').textContent;
+        const o_wins_before = iframe_document.getElementById('score-o-value').textContent;
+        const draws_before = iframe_document.getElementById('score-draws-value').textContent;
+        const round_before_element = iframe_document.getElementById('round-counter');
+        const round_before = round_before_element ? round_before_element.textContent : '';
+
+        // Test 1: lowercase r resets board.
+        dispatch_key(iframe_document, 'r');
+        await wait_for(() => board_is_empty(iframe_document), 2000);
+        report('lowercase r clears board', board_is_empty(iframe_document));
+
+        // Test 2: scores unchanged by R key.
+        const x_wins_after = iframe_document.getElementById('score-x-value').textContent;
+        const o_wins_after = iframe_document.getElementById('score-o-value').textContent;
+        const draws_after = iframe_document.getElementById('score-draws-value').textContent;
+        const round_after = round_before_element ? round_before_element.textContent : '';
+        report('X wins unchanged by R', x_wins_before === x_wins_after, `${x_wins_before} -> ${x_wins_after}`);
+        report('O wins unchanged by R', o_wins_before === o_wins_after, `${o_wins_before} -> ${o_wins_after}`);
+        report('Draws unchanged by R', draws_before === draws_after, `${draws_before} -> ${draws_after}`);
+        report('Round counter unchanged (mid-round reset)', round_before === round_after, `${round_before} -> ${round_after}`);
+
+        // Test 3: uppercase R also works after placing a move.
+        iframe_document.querySelectorAll('.cell')[2].click();
+        await wait_for(() => {
+          return Array.from(iframe_document.querySelectorAll('.cell')).some(cell => cell.innerHTML.trim() !== '');
+        }, 2000);
+        dispatch_key(iframe_document, 'R');
+        await wait_for(() => board_is_empty(iframe_document), 2000);
+        report('uppercase R clears board', board_is_empty(iframe_document));
+
+        // Test 4: focus in player-name input — typing r must NOT reset.
+        const player_x_input = iframe_document.getElementById('player-x-input');
+        if (player_x_input) {
+          // Place a move so we can tell if reset fires.
+          iframe_document.querySelectorAll('.cell')[3].click();
+          await wait_for(() => {
+            return Array.from(iframe_document.querySelectorAll('.cell')).some(cell => cell.innerHTML.trim() !== '');
+          }, 2000);
+          player_x_input.focus();
+          const event = new iframe_window.KeyboardEvent('keydown', { key: 'r', bubbles: true, cancelable: true });
+          player_x_input.dispatchEvent(event);
+          // Small wait to let any mishandler settle.
+          await new Promise(r => setTimeout(r, 50));
+          const board_still_has_moves = Array.from(iframe_document.querySelectorAll('.cell')).some(cell => cell.innerHTML.trim() !== '');
+          report('R typed into player-name input does not reset board', board_still_has_moves);
+          player_x_input.blur();
+          // Clean up for next step.
+          dispatch_key(iframe_document, 'r');
+          await wait_for(() => board_is_empty(iframe_document), 2000);
+        } else {
+          report('player-name input present', false, 'input#player-x-input not found');
+        }
+
+        // Test 5: game-over modal dismissal via R.
+        const modal = iframe_document.getElementById('game-over-modal');
+        if (modal) {
+          // Force modal open to test dismissal without playing out a full win.
+          modal.hidden = false;
+          modal.classList.add('open');
+          dispatch_key(iframe_document, 'r');
+          await wait_for(() => modal.hidden === true, 2000);
+          report('R dismisses game-over modal when open', modal.hidden === true);
+        } else {
+          report('game-over modal present', false);
+        }
+      } catch (err) {
+        report('unexpected error', false, err && err.message ? err.message : String(err));
+      }
+
+      summary_element.textContent = `Passed: ${pass_count}  Failed: ${fail_count}`;
+      summary_element.className = fail_count === 0 ? 'pass' : 'fail';
+    }, { once: true });
+  </script>
+</body>
+</html>

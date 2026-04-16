@@ -2035,6 +2035,18 @@
 
       board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
       reset_button.addEventListener('click', reset_game);
+      document.addEventListener('keydown', (key_event) => {
+        if (key_event.key !== 'r' && key_event.key !== 'R') return;
+        if (key_event.ctrlKey || key_event.metaKey || key_event.altKey) return;
+        const target = key_event.target;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+        key_event.preventDefault();
+        if (!game_over_modal.hidden) {
+          handle_play_again();
+        } else {
+          reset_game();
+        }
+      });
       reset_scores_button.addEventListener('click', () => {
         if (window.confirm('Reset scores to 0?')) {
           reset_scores();
