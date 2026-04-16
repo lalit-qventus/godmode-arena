@@ -507,6 +507,37 @@
       outline: 2px solid var(--fg);
       outline-offset: 2px;
     }
+
+    #streak-display {
+      display: flex;
+      gap: 2rem;
+      padding: 0.75rem 1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: var(--fg);
+    }
+
+    #streak-display .current-streak-value {
+      min-height: 1.5rem;
+      display: flex;
+      align-items: center;
+    }
+
+    #streak-display .current-streak-value.x { color: var(--x-color); }
+    #streak-display .current-streak-value.o { color: var(--o-color); }
+
+    #streak-display .best-streak-value {
+      min-height: 1.5rem;
+      display: flex;
+      align-items: center;
+    }
+
+    #streak-display .best-streak-value.x { color: var(--x-color); }
+    #streak-display .best-streak-value.o { color: var(--o-color); }
   </style>
 </head>
 <body>
@@ -534,6 +565,10 @@
       <span class="score-x"><span id="score-x-label">X</span>: <span id="score-x-value">0</span></span>
       <span class="score-o"><span id="score-o-label">O</span>: <span id="score-o-value">0</span></span>
       <span class="score-draws">Draws: <span id="score-draws-value">0</span></span>
+    </div>
+    <div id="streak-display" aria-live="polite" aria-label="Win streaks">
+      <div>Current: <span class="current-streak-value" id="current-streak-value"></span></div>
+      <div>Best: <span class="best-streak-value" id="best-streak-value"></span></div>
     </div>
     <div id="status" aria-live="polite">Player X's turn</div>
     <div id="timer-controls">
@@ -825,6 +860,8 @@
       const timer_toggle = document.getElementById('timer-toggle');
       const timer_duration_select = document.getElementById('timer-duration');
       const timer_display = document.getElementById('timer-display');
+      const current_streak_value_element = document.getElementById('current-streak-value');
+      const best_streak_value_element = document.getElementById('best-streak-value');
 
       let board_state = Array(9).fill('');
       let current_player = 'X';
@@ -835,6 +872,12 @@
       let player_name_x = '';
       let player_name_o = '';
       let names_set = false;
+
+      // Streak tracking
+      let current_streak_player = '';
+      let current_streak_count = 0;
+      let best_streak_player = '';
+      let best_streak_count = 0;
 
       // Timer state
       let timer_enabled = false;
@@ -879,6 +922,7 @@
         names_set = true;
         player_names_modal.classList.add('hidden');
         update_scoreboard_labels();
+        render_streak_display();
         if (!game_over) {
           render_status(`${get_display_name(current_player)}'s turn`);
           start_timer();
@@ -904,6 +948,69 @@
         timer_toggle.checked = timer_enabled;
         timer_duration_select.value = String(timer_duration_seconds);
         update_timer_display();
+      }
+
+      function load_streak_state() {
+        const stored_current_player = localStorage.getItem('tic-tac-toe-current-streak-player') || '';
+        const stored_current_count = localStorage.getItem('tic-tac-toe-current-streak-count') || '0';
+        const stored_best_player = localStorage.getItem('tic-tac-toe-best-streak-player') || '';
+        const stored_best_count = localStorage.getItem('tic-tac-toe-best-streak-count') || '0';
+
+        current_streak_player = stored_current_player;
+        current_streak_count = Number(stored_current_count);
+        best_streak_player = stored_best_player;
+        best_streak_count = Number(stored_best_count);
+      }
+
+      function save_streak_state() {
+        localStorage.setItem('tic-tac-toe-current-streak-player', current_streak_player);
+        localStorage.setItem('tic-tac-toe-current-streak-count', String(current_streak_count));
+        localStorage.setItem('tic-tac-toe-best-streak-player', best_streak_player);
+        localStorage.setItem('tic-tac-toe-best-streak-count', String(best_streak_count));
+      }
+
+      function render_streak_display() {
+        if (current_streak_count === 0 || !current_streak_player) {
+          current_streak_value_element.textContent = '';
+          current_streak_value_element.className = 'current-streak-value';
+        } else {
+          const display_name = get_display_name(current_streak_player);
+          current_streak_value_element.textContent = `${display_name}: ${current_streak_count}`;
+          current_streak_value_element.className = `current-streak-value ${current_streak_player.toLowerCase()}`;
+        }
+
+        if (best_streak_count === 0 || !best_streak_player) {
+          best_streak_value_element.textContent = '';
+          best_streak_value_element.className = 'best-streak-value';
+        } else {
+          const display_name = get_display_name(best_streak_player);
+          best_streak_value_element.textContent = `${display_name}: ${best_streak_count}`;
+          best_streak_value_element.className = `best-streak-value ${best_streak_player.toLowerCase()}`;
+        }
+      }
+
+      function update_streak_on_win(winning_player) {
+        if (current_streak_player === winning_player) {
+          current_streak_count += 1;
+        } else {
+          current_streak_player = winning_player;
+          current_streak_count = 1;
+        }
+
+        if (current_streak_count > best_streak_count) {
+          best_streak_player = winning_player;
+          best_streak_count = current_streak_count;
+        }
+
+        save_streak_state();
+        render_streak_display();
+      }
+
+      function reset_current_streak() {
+        current_streak_player = '';
+        current_streak_count = 0;
+        save_streak_state();
+        render_streak_display();
       }
 
       function update_timer_display() {
@@ -1091,6 +1198,7 @@
           }
           highlight_winning_line(winning_result.line);
           render_scoreboard();
+          update_streak_on_win(winning_player);
           const winning_display_name = get_display_name(winning_player);
           render_status(`${winning_display_name} wins!`, winning_player === 'X' ? 'win-x' : 'win-o');
           disable_remaining_cells();
@@ -1104,6 +1212,7 @@
           stop_timer();
           score_draws += 1;
           render_scoreboard();
+          reset_current_streak();
           render_status("Draw", 'draw');
           play_draw_sound();
           return;
@@ -1137,7 +1246,13 @@
         score_x_wins = 0;
         score_o_wins = 0;
         score_draws = 0;
+        current_streak_player = '';
+        current_streak_count = 0;
+        best_streak_player = '';
+        best_streak_count = 0;
+        save_streak_state();
         render_scoreboard();
+        render_streak_display();
       }
 
       board_cells.forEach(cell => cell.addEventListener('click', handle_cell_click));
@@ -1180,7 +1295,9 @@
       load_player_names();
       load_timer_state();
       load_audio_state();
+      load_streak_state();
       render_scoreboard();
+      render_streak_display();
       update_theme_toggle_icon();
       update_audio_toggle_icon();
       if (!names_set) {
