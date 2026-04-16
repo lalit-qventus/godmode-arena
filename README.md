@@ -15,3 +15,7 @@ Two players take turns placing marks on a 3x3 grid. Each round, the first player
 - Click any empty cell to place your mark
 - Click **Reset** at any time to start a new game
 - The status line above the board shows whose turn it is, who won, or that the game is a draw
+
+## Offline / installable
+
+Tic-Tac-Toe ships as a Progressive Web App. `manifest.webmanifest` declares the app shell and icons, and `sw.js` precaches `index.html`, the manifest, and both icons on first visit. After that first load the board, reset, and full gameplay work offline — pull the network and hard-reload to verify. Chromium-based browsers will surface an "Install" affordance so the game can be added to the home screen and launched standalone.

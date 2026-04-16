@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#16a34a">
+  <link rel="manifest" href="./manifest.webmanifest">
   <title>Tic-Tac-Toe</title>
   <script>
     (function () {
@@ -1932,6 +1934,15 @@
         start_timer();
       }
     })();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').catch(function (registration_error) {
+          console.warn('Service worker registration failed:', registration_error);
+        });
+      });
+    }
   </script>
 </body>
 </html>
