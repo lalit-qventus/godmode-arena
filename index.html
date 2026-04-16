@@ -6,9 +6,20 @@
   <title>Tic-Tac-Toe</title>
   <script>
     (function () {
-      const stored_theme = localStorage.getItem('tic-tac-toe-theme');
+      const stored_palette_theme = localStorage.getItem('tic-tac-toe-palette-theme');
+      const stored_color_theme = localStorage.getItem('tic-tac-toe-theme');
       const prefers_dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const should_use_dark = stored_theme ? stored_theme === 'dark' : prefers_dark;
+
+      // Apply palette theme (Classic, Ocean, Sunset, Forest) if saved
+      if (stored_palette_theme) {
+        document.documentElement.classList.add('theme-' + stored_palette_theme);
+      } else {
+        // Default to Classic palette
+        document.documentElement.classList.add('theme-classic');
+      }
+
+      // Apply dark mode if saved or preferred
+      const should_use_dark = stored_color_theme ? stored_color_theme === 'dark' : prefers_dark;
       if (should_use_dark) {
         document.documentElement.classList.add('dark-theme');
       }
@@ -29,6 +40,74 @@
       --cell-hover: #e2e8f0;
       --winning-bg: rgba(22, 163, 74, 0.15);
       --winning-border: #16a34a;
+    }
+
+    /* Classic theme (light) */
+    html.theme-classic {
+      --bg: #f8fafc;
+      --panel: #f1f5f9;
+      --fg: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --x-color: #0284c7;
+      --o-color: #db2777;
+      --accent: #16a34a;
+      --accent-hover: #15803d;
+      --accent-fg: #fafafa;
+      --cell-hover: #e2e8f0;
+      --winning-bg: rgba(22, 163, 74, 0.15);
+      --winning-border: #16a34a;
+    }
+
+    /* Ocean theme */
+    html.theme-ocean {
+      --bg: #0f172a;
+      --panel: #1a3a52;
+      --fg: #e0f2fe;
+      --muted: #7dd3fc;
+      --border: #0369a1;
+      --x-color: #06b6d4;
+      --o-color: #00d9ff;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+      --accent-fg: #001f3f;
+      --cell-hover: #1e5a7a;
+      --winning-bg: rgba(6, 182, 212, 0.2);
+      --winning-border: #06b6d4;
+    }
+
+    /* Sunset theme */
+    html.theme-sunset {
+      --bg: #7c2d12;
+      --panel: #9a3412;
+      --fg: #fef3c7;
+      --muted: #fed7aa;
+      --border: #dc2626;
+      --x-color: #f59e0b;
+      --o-color: #ef4444;
+      --accent: #f97316;
+      --accent-hover: #ea580c;
+      --accent-fg: #1c1917;
+      --cell-hover: #b45309;
+      --winning-bg: rgba(249, 115, 22, 0.2);
+      --winning-border: #f97316;
+    }
+
+    /* Forest theme */
+    html.theme-forest {
+      --bg: #1b4332;
+      --panel: #2d6a4f;
+      --fg: #d8f3dc;
+      --muted: #a7c957;
+      --border: #40916c;
+      --x-color: #52b788;
+      --o-color: #95d5b2;
+      --accent: #74c69d;
+      --accent-hover: #52b788;
+      --accent-fg: #0b3d2c;
+      --cell-hover: #40916c;
+      --winning-bg: rgba(116, 198, 157, 0.2);
+      --winning-border: #74c69d;
     }
 
     html.dark-theme {
@@ -539,10 +618,57 @@
       outline: 2px solid var(--fg);
       outline-offset: 2px;
     }
+
+    #theme-selector {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 100;
+    }
+
+    .theme-button {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 2px solid var(--border);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--fg);
+      background: var(--panel);
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .theme-button:hover {
+      background: var(--cell-hover);
+      border-color: var(--accent);
+    }
+
+    .theme-button.active {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-color: var(--accent);
+    }
+
+    .theme-button:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
   </style>
 </head>
 <body>
   <canvas id="confetti-canvas"></canvas>
+  <div id="theme-selector" aria-label="Theme selector">
+    <button class="theme-button active" data-theme="classic" aria-label="Classic theme">C</button>
+    <button class="theme-button" data-theme="ocean" aria-label="Ocean theme">O</button>
+    <button class="theme-button" data-theme="sunset" aria-label="Sunset theme">S</button>
+    <button class="theme-button" data-theme="forest" aria-label="Forest theme">F</button>
+  </div>
   <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
   <div id="player-names-modal">
     <div class="modal-content">
@@ -847,6 +973,8 @@
       const score_draws_element = document.getElementById('score-draws-value');
       const theme_toggle_button = document.getElementById('theme-toggle');
       const audio_toggle_button = document.getElementById('audio-toggle');
+      const theme_selector = document.getElementById('theme-selector');
+      const theme_buttons = Array.from(theme_selector.querySelectorAll('.theme-button'));
       const player_names_modal = document.getElementById('player-names-modal');
       const player_x_input = document.getElementById('player-x-input');
       const player_o_input = document.getElementById('player-o-input');
@@ -998,6 +1126,16 @@
         return document.documentElement.classList.contains('dark-theme') ? 'dark' : 'light';
       }
 
+      function get_current_palette_theme() {
+        const html_element = document.documentElement;
+        for (const theme of ['classic', 'ocean', 'sunset', 'forest']) {
+          if (html_element.classList.contains('theme-' + theme)) {
+            return theme;
+          }
+        }
+        return 'classic';
+      }
+
       function update_theme_toggle_icon() {
         const is_dark = get_current_theme() === 'dark';
         theme_toggle_button.textContent = is_dark ? '☀️' : '🌙';
@@ -1017,6 +1155,28 @@
 
         localStorage.setItem('tic-tac-toe-theme', new_theme);
         update_theme_toggle_icon();
+      }
+
+      function set_palette_theme(theme_name) {
+        const html_element = document.documentElement;
+
+        // Remove all existing palette theme classes
+        html_element.classList.remove('theme-classic', 'theme-ocean', 'theme-sunset', 'theme-forest');
+
+        // Add new palette theme class
+        html_element.classList.add('theme-' + theme_name);
+
+        // Save to localStorage
+        localStorage.setItem('tic-tac-toe-palette-theme', theme_name);
+
+        // Update active button state
+        theme_buttons.forEach(btn => {
+          if (btn.dataset.theme === theme_name) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
       }
 
       function render_status(message, css_class) {
@@ -1190,6 +1350,11 @@
       reset_button.addEventListener('click', reset_game);
       reset_scores_button.addEventListener('click', reset_scores);
       theme_toggle_button.addEventListener('click', toggle_theme);
+      theme_buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          set_palette_theme(btn.dataset.theme);
+        });
+      });
       audio_toggle_button.addEventListener('click', () => {
         audio_enabled = !audio_enabled;
         save_audio_state();
@@ -1223,9 +1388,27 @@
         if (e.key === 'Enter') save_player_names();
       });
 
+      function load_palette_theme() {
+        const saved_theme = localStorage.getItem('tic-tac-toe-palette-theme') || 'classic';
+        const current_palette = get_current_palette_theme();
+        if (current_palette !== saved_theme) {
+          set_palette_theme(saved_theme);
+        } else {
+          // Just update the button states if theme was already applied
+          theme_buttons.forEach(btn => {
+            if (btn.dataset.theme === saved_theme) {
+              btn.classList.add('active');
+            } else {
+              btn.classList.remove('active');
+            }
+          });
+        }
+      }
+
       load_player_names();
       load_timer_state();
       load_audio_state();
+      load_palette_theme();
       render_scoreboard();
       update_theme_toggle_icon();
       update_audio_toggle_icon();
