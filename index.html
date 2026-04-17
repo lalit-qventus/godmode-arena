@@ -1809,6 +1809,102 @@
         } catch (storage_write_error) {
           console.error('Failed to persist game state:', storage_write_error);
         }
+        update_url_hash_from_board();
+      }
+
+      function encode_board_to_hash_string() {
+        let encoded_hash_string = '';
+        for (let hash_cell_index = 0; hash_cell_index < 9; hash_cell_index += 1) {
+          const cell_value = board_state[hash_cell_index];
+          if (cell_value === 'X') encoded_hash_string += 'X';
+          else if (cell_value === 'O') encoded_hash_string += 'O';
+          else encoded_hash_string += '-';
+        }
+        encoded_hash_string += (current_player === 'O' ? 'O' : 'X');
+        return encoded_hash_string;
+      }
+
+      function decode_hash_string_to_state(raw_hash_fragment) {
+        if (typeof raw_hash_fragment !== 'string') return null;
+        const trimmed_hash_body = raw_hash_fragment.replace(/^#/, '');
+        if (trimmed_hash_body.length !== 9 && trimmed_hash_body.length !== 10) return null;
+        const decoded_cells = new Array(9);
+        let decoded_x_count = 0;
+        let decoded_o_count = 0;
+        for (let decode_index = 0; decode_index < 9; decode_index += 1) {
+          const hash_char = trimmed_hash_body[decode_index];
+          if (hash_char === 'X') { decoded_cells[decode_index] = 'X'; decoded_x_count += 1; }
+          else if (hash_char === 'O') { decoded_cells[decode_index] = 'O'; decoded_o_count += 1; }
+          else if (hash_char === '-') { decoded_cells[decode_index] = ''; }
+          else return null;
+        }
+        const move_count_difference = decoded_x_count - decoded_o_count;
+        if (move_count_difference !== 0 && move_count_difference !== 1 && move_count_difference !== -1) return null;
+        let next_player_to_move;
+        if (trimmed_hash_body.length === 10) {
+          const explicit_player_char = trimmed_hash_body[9];
+          if (explicit_player_char !== 'X' && explicit_player_char !== 'O') return null;
+          next_player_to_move = explicit_player_char;
+        } else if (move_count_difference === 1) {
+          next_player_to_move = 'O';
+        } else if (move_count_difference === -1) {
+          next_player_to_move = 'X';
+        } else {
+          next_player_to_move = 'X';
+        }
+        return { cells: decoded_cells, next_player: next_player_to_move };
+      }
+
+      function update_url_hash_from_board() {
+        const board_has_any_marks = board_state.some(cell_value => cell_value === 'X' || cell_value === 'O');
+        try {
+          const current_hash_body = window.location.hash.replace(/^#/, '');
+          if (!board_has_any_marks) {
+            if (current_hash_body !== '') {
+              history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+            return;
+          }
+          const encoded_board_hash = encode_board_to_hash_string();
+          if (current_hash_body !== encoded_board_hash) {
+            history.replaceState(null, '', '#' + encoded_board_hash);
+          }
+        } catch (hash_update_error) {
+          // file:// or sandboxed contexts may block history API; ignore
+        }
+      }
+
+      function clear_url_hash_completely() {
+        try {
+          if (window.location.hash && window.location.hash !== '#') {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+        } catch (hash_clear_error) {
+          // ignore
+        }
+      }
+
+      function restore_game_state_from_url_hash() {
+        const raw_location_hash = window.location.hash;
+        if (!raw_location_hash || raw_location_hash === '#') return false;
+        const decoded_hash_state = decode_hash_string_to_state(raw_location_hash);
+        if (!decoded_hash_state) {
+          clear_url_hash_completely();
+          return false;
+        }
+        board_state = decoded_hash_state.cells.slice();
+        current_player = decoded_hash_state.next_player;
+        first_player_this_round = decoded_hash_state.next_player;
+        move_history = [];
+        last_placed_cell_index = null;
+        game_over = false;
+        const hash_winner_result = detect_winner();
+        if (hash_winner_result) {
+          game_over = true;
+        } else if (board_state.every(cell_mark => cell_mark !== '')) {
+          game_over = true;
+        }
+        return true;
       }
 
       function restore_game_state_from_storage() {
@@ -1932,6 +2028,7 @@
             console.error('Failed to remove key:', storage_key, storage_remove_error);
           }
         });
+        clear_url_hash_completely();
         window.location.reload();
       }
 
@@ -2711,7 +2808,12 @@
       load_audio_state();
       load_palette_theme();
       load_round_count();
-      const game_state_was_restored = restore_game_state_from_storage();
+      let game_state_was_restored = restore_game_state_from_storage();
+      const game_state_was_restored_from_hash = restore_game_state_from_url_hash();
+      if (game_state_was_restored_from_hash) {
+        game_state_was_restored = true;
+        save_game_state();
+      }
       render_scoreboard();
       render_round_counter();
       render_history();
