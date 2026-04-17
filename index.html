@@ -401,6 +401,23 @@
       color: var(--fg);
       font-family: inherit;
       padding: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cell-ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: currentColor;
+      pointer-events: none;
+      transform: scale(0);
+      opacity: 0.3;
+      z-index: 0;
+      animation: cell-ripple 400ms ease-out forwards;
+    }
+
+    @keyframes cell-ripple {
+      to { transform: scale(1); opacity: 0; }
     }
 
     .cell:hover:not(:disabled) {
@@ -476,6 +493,8 @@
       align-items: center;
       justify-content: center;
       animation: mark-in 200ms ease-out;
+      position: relative;
+      z-index: 1;
     }
 
     @keyframes mark-in {
@@ -536,6 +555,7 @@
       .cell.last-placed { transition: none; }
       .cell { transition: background 0.15s ease; }
       .cell:empty:hover:not(:disabled) { transform: none; }
+      .cell-ripple { display: none; }
     }
 
     #reset {
@@ -2324,10 +2344,36 @@
         reset_timer();
       }
 
+      function spawn_cell_ripple(cell_element, click_event) {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          return;
+        }
+        const cell_rect = cell_element.getBoundingClientRect();
+        const ripple_size_px = Math.max(cell_rect.width, cell_rect.height) * 2;
+        const has_pointer_coords = click_event && (click_event.clientX || click_event.clientY);
+        const click_x_in_cell = has_pointer_coords
+          ? click_event.clientX - cell_rect.left
+          : cell_rect.width / 2;
+        const click_y_in_cell = has_pointer_coords
+          ? click_event.clientY - cell_rect.top
+          : cell_rect.height / 2;
+        const ripple_span = document.createElement('span');
+        ripple_span.className = 'cell-ripple';
+        ripple_span.setAttribute('aria-hidden', 'true');
+        ripple_span.style.width = ripple_size_px + 'px';
+        ripple_span.style.height = ripple_size_px + 'px';
+        ripple_span.style.left = (click_x_in_cell - ripple_size_px / 2) + 'px';
+        ripple_span.style.top = (click_y_in_cell - ripple_size_px / 2) + 'px';
+        ripple_span.addEventListener('animationend', () => ripple_span.remove());
+        cell_element.appendChild(ripple_span);
+      }
+
       function handle_cell_click(event) {
         if (game_over) return;
         const cell_index = Number(event.currentTarget.dataset.index);
         if (board_state[cell_index] !== '') return;
+
+        spawn_cell_ripple(event.currentTarget, event);
 
         board_state[cell_index] = current_player;
         move_history.push({ cell: cell_index, player: current_player });
