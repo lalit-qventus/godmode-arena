@@ -236,6 +236,11 @@
     #scoreboard .score-x { color: var(--x-color); }
     #scoreboard .score-o { color: var(--o-color); }
     #scoreboard .score-draws { color: var(--muted); }
+    #scoreboard .score-pct {
+      font-size: 0.85em;
+      font-weight: 500;
+      margin-left: 0.15em;
+    }
 
     #scoreboard .score-tied {
       display: inline-flex;
@@ -1112,7 +1117,8 @@
       #scoreboard .score-x,
       #scoreboard .score-o,
       #scoreboard .score-draws,
-      #scoreboard .score-tied { color: #000 !important; border-color: #000 !important; }
+      #scoreboard .score-tied,
+      #scoreboard .score-pct { color: #000 !important; border-color: #000 !important; }
 
       #turn-row {
         justify-content: center !important;
@@ -1206,9 +1212,9 @@
   <main>
     <h1>Tic-Tac-Toe</h1>
     <div id="scoreboard" aria-live="polite" aria-label="Score">
-      <span class="score-x"><span id="score-x-label">X</span>: <span id="score-x-value">0</span></span>
+      <span class="score-x"><span id="score-x-label">X</span>: <span id="score-x-value">0</span> <span class="score-pct" id="score-x-pct">(0%)</span></span>
       <span class="score-tied" id="score-tied" aria-label="Scores tied">TIED</span>
-      <span class="score-o"><span id="score-o-label">O</span>: <span id="score-o-value">0</span></span>
+      <span class="score-o"><span id="score-o-label">O</span>: <span id="score-o-value">0</span> <span class="score-pct" id="score-o-pct">(0%)</span></span>
       <span class="score-draws">Draws: <span id="score-draws-value">0</span></span>
     </div>
     <div id="round-counter" aria-live="polite" aria-atomic="true" aria-label="Current round number">
@@ -1591,6 +1597,8 @@
       const score_x_element = document.getElementById('score-x-value');
       const score_o_element = document.getElementById('score-o-value');
       const score_draws_element = document.getElementById('score-draws-value');
+      const score_x_pct_element = document.getElementById('score-x-pct');
+      const score_o_pct_element = document.getElementById('score-o-pct');
       const score_tied_element = document.getElementById('score-tied');
       const round_count_element = document.getElementById('round-count-value');
       const current_streak_element = document.getElementById('current-streak');
@@ -2020,6 +2028,11 @@
         score_x_element.textContent = String(score_x_wins);
         score_o_element.textContent = String(score_o_wins);
         score_draws_element.textContent = String(score_draws);
+        const total_games = score_x_wins + score_o_wins + score_draws;
+        const x_pct = total_games === 0 ? 0 : Math.round((score_x_wins / total_games) * 100);
+        const o_pct = total_games === 0 ? 0 : Math.round((score_o_wins / total_games) * 100);
+        score_x_pct_element.textContent = `(${x_pct}%)`;
+        score_o_pct_element.textContent = `(${o_pct}%)`;
         score_tied_element.hidden = score_x_wins !== score_o_wins;
         render_streakboard();
       }
