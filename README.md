@@ -23,4 +23,4 @@ Tic-Tac-Toe ships as a Progressive Web App. `manifest.webmanifest` declares the 
 
 ## Sharing
 
-Social-share preview uses `og-image.png` at the repo root (1200x630). The `og:url` value in `index.html` is a placeholder (`https://example.com/tic-tac-toe/`) and must be swapped to the real deployed URL at deploy time.
+Social platforms that read Open Graph tags render a preview card with the game title, a short description, and type `website`. Twitter cards additionally render `og-image.png` at the repo root (1200x630).
