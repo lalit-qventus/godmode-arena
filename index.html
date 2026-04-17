@@ -284,6 +284,38 @@
       border: 2px solid var(--border);
       border-radius: 0.5rem;
       overflow: hidden;
+      position: relative;
+    }
+
+    #winning-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+      overflow: visible;
+    }
+
+    #winning-line line {
+      stroke: var(--accent);
+      stroke-width: 0.14;
+      stroke-linecap: round;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation: draw-winning-line 300ms ease-out forwards;
+    }
+
+    @keyframes draw-winning-line {
+      to { stroke-dashoffset: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #winning-line line {
+        animation: none;
+        stroke-dashoffset: 0;
+      }
     }
 
     .cell {
@@ -1102,6 +1134,7 @@
       }
       .cell.last-placed { box-shadow: none !important; }
       .cell::before, .cell::after { content: none !important; }
+      #winning-line { display: none !important; }
 
       .cell svg { color: #000 !important; }
       .cell svg.x-mark path,
@@ -1188,6 +1221,7 @@
         <button class="cell" data-index="6" aria-label="Cell 7"></button>
         <button class="cell" data-index="7" aria-label="Cell 8"></button>
         <button class="cell" data-index="8" aria-label="Cell 9"></button>
+        <svg id="winning-line" viewBox="0 0 3 3" preserveAspectRatio="none" aria-hidden="true"></svg>
       </div>
       <aside id="history-panel" aria-label="Move history">
         <h2>Move History</h2>
@@ -1702,6 +1736,7 @@
       }
 
       function render_restored_board() {
+        clear_winning_line();
         for (let cell_index = 0; cell_index < board_cells.length; cell_index += 1) {
           const cell_button = board_cells[cell_index];
           const stored_mark = board_state[cell_index];
@@ -2023,6 +2058,36 @@
         for (const cell_index of line) {
           board_cells[cell_index].classList.add('winning');
         }
+        draw_winning_line(line);
+      }
+
+      function draw_winning_line(line_indices) {
+        const winning_line_svg = document.getElementById('winning-line');
+        if (!winning_line_svg) return;
+        while (winning_line_svg.firstChild) {
+          winning_line_svg.removeChild(winning_line_svg.firstChild);
+        }
+        const start_cell_index = line_indices[0];
+        const end_cell_index = line_indices[line_indices.length - 1];
+        const start_x = (start_cell_index % 3) + 0.5;
+        const start_y = Math.floor(start_cell_index / 3) + 0.5;
+        const end_x = (end_cell_index % 3) + 0.5;
+        const end_y = Math.floor(end_cell_index / 3) + 0.5;
+        const line_element = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line_element.setAttribute('x1', String(start_x));
+        line_element.setAttribute('y1', String(start_y));
+        line_element.setAttribute('x2', String(end_x));
+        line_element.setAttribute('y2', String(end_y));
+        line_element.setAttribute('pathLength', '1');
+        winning_line_svg.appendChild(line_element);
+      }
+
+      function clear_winning_line() {
+        const winning_line_svg = document.getElementById('winning-line');
+        if (!winning_line_svg) return;
+        while (winning_line_svg.firstChild) {
+          winning_line_svg.removeChild(winning_line_svg.firstChild);
+        }
       }
 
       function is_draw() {
@@ -2287,6 +2352,7 @@
         stop_timer();
         const board_element = document.getElementById('board');
         board_element.classList.remove('shake');
+        clear_winning_line();
         board_state = Array(9).fill('');
         move_history = [];
         first_player_this_round = Math.random() < 0.5 ? 'X' : 'O';
