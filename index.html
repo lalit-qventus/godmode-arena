@@ -963,6 +963,47 @@
       #help-overlay, #help-overlay .help-content { transition: none; }
     }
 
+    #site-footer {
+      margin: 1.5rem auto 1rem;
+      padding: 0 1rem;
+      max-width: 48rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-align: center;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem 0.9rem;
+    }
+    #site-footer .site-footer-shortcuts {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem 0.9rem;
+    }
+    #site-footer .site-footer-shortcuts li {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    #site-footer kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.7rem;
+      padding: 0.05rem 0.35rem;
+      border: 1px solid var(--muted);
+      border-radius: 0.25rem;
+      color: var(--muted);
+      background: transparent;
+    }
+    #site-footer .site-footer-sep {
+      opacity: 0.6;
+    }
+
     @media print {
       @page { margin: 0.5in; }
 
@@ -979,7 +1020,8 @@
       #first-player-announcement,
       #timer-controls,
       #history-panel,
-      #controls {
+      #controls,
+      #site-footer {
         display: none !important;
       }
 
@@ -1146,6 +1188,16 @@
       <button id="audio-toggle" type="button" aria-label="Mute sound effects" aria-pressed="false"></button>
     </div>
   </main>
+
+  <footer id="site-footer" role="contentinfo">
+    <span class="site-footer-version">v1.0</span>
+    <span class="site-footer-sep" aria-hidden="true">&middot;</span>
+    <ul class="site-footer-shortcuts" aria-label="Keyboard shortcuts">
+      <li><kbd>R</kbd> Restart</li>
+      <li><kbd>?</kbd> Help</li>
+      <li><kbd>Esc</kbd> Close</li>
+    </ul>
+  </footer>
 
   <script>
     (function () {
