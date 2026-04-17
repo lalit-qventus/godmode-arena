@@ -237,6 +237,42 @@
     #scoreboard .score-o { color: var(--o-color); }
     #scoreboard .score-draws { color: var(--muted); }
 
+    #scoreboard .score-x,
+    #scoreboard .score-o {
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.375rem;
+      transition: box-shadow 0.3s ease;
+    }
+
+    #scoreboard[data-turn="x"]:not([data-game-over]) .score-x {
+      animation: player-turn-glow-x 1.6s ease-in-out infinite;
+    }
+    #scoreboard[data-turn="o"]:not([data-game-over]) .score-o {
+      animation: player-turn-glow-o 1.6s ease-in-out infinite;
+    }
+
+    @keyframes player-turn-glow-x {
+      0%, 100% { box-shadow: 0 0 0 0 transparent; }
+      50%      { box-shadow: 0 0 10px 2px var(--x-color); }
+    }
+    @keyframes player-turn-glow-o {
+      0%, 100% { box-shadow: 0 0 0 0 transparent; }
+      50%      { box-shadow: 0 0 10px 2px var(--o-color); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #scoreboard[data-turn="x"]:not([data-game-over]) .score-x,
+      #scoreboard[data-turn="o"]:not([data-game-over]) .score-o {
+        animation: none;
+      }
+      #scoreboard[data-turn="x"]:not([data-game-over]) .score-x {
+        box-shadow: 0 0 0 2px var(--x-color);
+      }
+      #scoreboard[data-turn="o"]:not([data-game-over]) .score-o {
+        box-shadow: 0 0 0 2px var(--o-color);
+      }
+    }
+
     #scoreboard .score-tied {
       display: inline-flex;
       align-items: center;
@@ -2002,11 +2038,16 @@
 
       function update_board_data_attributes() {
         const board_element = document.getElementById('board');
-        board_element.dataset.turn = current_player === 'X' ? 'x' : 'o';
+        const scoreboard_element = document.getElementById('scoreboard');
+        const turn_value = current_player === 'X' ? 'x' : 'o';
+        board_element.dataset.turn = turn_value;
+        scoreboard_element.dataset.turn = turn_value;
         if (game_over) {
           board_element.dataset.gameOver = 'true';
+          scoreboard_element.dataset.gameOver = 'true';
         } else {
           delete board_element.dataset.gameOver;
+          delete scoreboard_element.dataset.gameOver;
         }
       }
 
