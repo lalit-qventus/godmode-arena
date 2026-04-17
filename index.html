@@ -18,21 +18,16 @@
   <meta name="twitter:image" content="./og-image.png">
   <script>
     (function () {
-      const stored_palette_theme = localStorage.getItem('tic-tac-toe-palette-theme');
-      const stored_dark_mode = localStorage.getItem('darkMode');
-      const prefers_dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const stored_palette_theme = localStorage.getItem('ttt-theme');
+      const stored_dark_mode = localStorage.getItem('ttt-dark-mode');
 
-      // Apply palette theme (Classic, Ocean, Sunset, Forest) if saved
       if (stored_palette_theme) {
         document.documentElement.classList.add('theme-' + stored_palette_theme);
       } else {
-        // Default to Classic palette
         document.documentElement.classList.add('theme-classic');
       }
 
-      // Apply dark mode if saved or preferred
-      const should_use_dark = stored_dark_mode !== null ? stored_dark_mode === 'true' : prefers_dark;
-      if (should_use_dark) {
+      if (stored_dark_mode === 'true') {
         document.documentElement.classList.add('dark-theme');
       }
     })();
@@ -1494,12 +1489,12 @@
       }
 
       function load_audio_state() {
-        const stored_state = localStorage.getItem('tic-tac-toe-audio-enabled');
-        audio_enabled = stored_state !== 'false'; // default true
+        const stored_mute = localStorage.getItem('ttt-mute');
+        audio_enabled = stored_mute !== 'true';
       }
 
       function save_audio_state() {
-        localStorage.setItem('tic-tac-toe-audio-enabled', String(audio_enabled));
+        localStorage.setItem('ttt-mute', String(!audio_enabled));
       }
 
       function update_audio_toggle_icon() {
@@ -1748,8 +1743,9 @@
           'tic-tac-toe-player-x',
           'tic-tac-toe-player-o',
           'tic-tac-toe-theme',
-          'tic-tac-toe-palette-theme',
-          'tic-tac-toe-audio-enabled',
+          'ttt-theme',
+          'ttt-dark-mode',
+          'ttt-mute',
           'tic-tac-toe-timer-enabled',
           'tic-tac-toe-timer-duration',
         ];
@@ -1917,7 +1913,7 @@
           html_element.classList.remove('dark-theme');
         }
 
-        localStorage.setItem('darkMode', String(new_theme === 'dark'));
+        localStorage.setItem('ttt-dark-mode', String(new_theme === 'dark'));
         update_theme_toggle_icon();
         update_favicon();
       }
@@ -1931,8 +1927,7 @@
         // Add new palette theme class
         html_element.classList.add('theme-' + theme_name);
 
-        // Save to localStorage
-        localStorage.setItem('tic-tac-toe-palette-theme', theme_name);
+        localStorage.setItem('ttt-theme', theme_name);
 
         // Update active button state
         theme_buttons.forEach(btn => {
@@ -2457,7 +2452,7 @@
       });
 
       function load_palette_theme() {
-        const saved_theme = localStorage.getItem('tic-tac-toe-palette-theme') || 'classic';
+        const saved_theme = localStorage.getItem('ttt-theme') || 'classic';
         const current_palette = get_current_palette_theme();
         if (current_palette !== saved_theme) {
           set_palette_theme(saved_theme);
