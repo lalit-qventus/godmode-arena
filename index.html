@@ -1294,40 +1294,40 @@
   <a class="skip-link" href="#board">Skip to game</a>
   <canvas id="confetti-canvas"></canvas>
   <div id="theme-selector" aria-label="Theme selector">
-    <button class="theme-button active" data-theme="classic" aria-label="Classic theme">C</button>
-    <button class="theme-button" data-theme="ocean" aria-label="Ocean theme">O</button>
-    <button class="theme-button" data-theme="sunset" aria-label="Sunset theme">S</button>
-    <button class="theme-button" data-theme="forest" aria-label="Forest theme">F</button>
-    <button class="theme-button" data-theme="colorblind" aria-label="Colorblind theme">CB</button>
+    <button class="theme-button active" data-theme="classic" aria-label="Classic theme" tabindex="16">C</button>
+    <button class="theme-button" data-theme="ocean" aria-label="Ocean theme" tabindex="17">O</button>
+    <button class="theme-button" data-theme="sunset" aria-label="Sunset theme" tabindex="18">S</button>
+    <button class="theme-button" data-theme="forest" aria-label="Forest theme" tabindex="19">F</button>
+    <button class="theme-button" data-theme="colorblind" aria-label="Colorblind theme" tabindex="20">CB</button>
   </div>
-  <button id="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
+  <button id="theme-toggle" type="button" aria-label="Toggle dark mode" tabindex="21"></button>
   <div id="player-names-modal">
     <div class="modal-content">
       <h2>Enter Player Names</h2>
       <div class="name-input-group">
         <label for="player-x-input">Player X Name</label>
-        <input id="player-x-input" type="text" placeholder="Player X" maxlength="20" />
+        <input id="player-x-input" type="text" placeholder="Player X" maxlength="20" tabindex="23" />
       </div>
       <div class="name-input-group">
         <label for="player-o-input">Player O Name</label>
-        <input id="player-o-input" type="text" placeholder="Player O" maxlength="20" />
+        <input id="player-o-input" type="text" placeholder="Player O" maxlength="20" tabindex="24" />
       </div>
       <div class="modal-buttons">
-        <button class="modal-button" id="set-names">Set Names</button>
+        <button class="modal-button" id="set-names" tabindex="25">Set Names</button>
       </div>
     </div>
   </div>
   <div id="game-over-modal" role="dialog" aria-modal="true" aria-labelledby="game-over-title" hidden>
     <div class="game-over-content">
       <h2 id="game-over-title" class="game-over-title"></h2>
-      <button class="modal-button" id="play-again" type="button">Play Again</button>
+      <button class="modal-button" id="play-again" type="button" tabindex="26">Play Again</button>
     </div>
   </div>
   <div id="help-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
     <div class="help-content">
       <h2 id="help-title" class="help-title">Keyboard shortcuts</h2>
       <ul class="shortcut-list" id="shortcut-list"></ul>
-      <button class="modal-button help-close" id="help-close" type="button">Close</button>
+      <button class="modal-button help-close" id="help-close" type="button" tabindex="27">Close</button>
     </div>
   </div>
   <main class="container">
@@ -1351,20 +1351,20 @@
     </div>
     <div id="first-player-announcement" aria-live="polite"></div>
     <div id="timer-controls">
-      <input type="checkbox" id="timer-toggle" aria-label="Enable turn timer" />
+      <input type="checkbox" id="timer-toggle" aria-label="Enable turn timer" tabindex="22" />
       <label for="timer-toggle">Turn Timer</label>
     </div>
     <div id="game-area">
       <div id="board" role="grid" aria-label="Tic-tac-toe board" tabindex="-1">
-        <button class="cell" data-index="0" aria-label="Cell 1"></button>
-        <button class="cell" data-index="1" aria-label="Cell 2"></button>
-        <button class="cell" data-index="2" aria-label="Cell 3"></button>
-        <button class="cell" data-index="3" aria-label="Cell 4"></button>
-        <button class="cell" data-index="4" aria-label="Cell 5"></button>
-        <button class="cell" data-index="5" aria-label="Cell 6"></button>
-        <button class="cell" data-index="6" aria-label="Cell 7"></button>
-        <button class="cell" data-index="7" aria-label="Cell 8"></button>
-        <button class="cell" data-index="8" aria-label="Cell 9"></button>
+        <button class="cell" data-index="0" aria-label="Cell 1" tabindex="1"></button>
+        <button class="cell" data-index="1" aria-label="Cell 2" tabindex="2"></button>
+        <button class="cell" data-index="2" aria-label="Cell 3" tabindex="3"></button>
+        <button class="cell" data-index="3" aria-label="Cell 4" tabindex="4"></button>
+        <button class="cell" data-index="4" aria-label="Cell 5" tabindex="5"></button>
+        <button class="cell" data-index="5" aria-label="Cell 6" tabindex="6"></button>
+        <button class="cell" data-index="6" aria-label="Cell 7" tabindex="7"></button>
+        <button class="cell" data-index="7" aria-label="Cell 8" tabindex="8"></button>
+        <button class="cell" data-index="8" aria-label="Cell 9" tabindex="9"></button>
         <svg id="winning-line" viewBox="0 0 3 3" preserveAspectRatio="none" aria-hidden="true"></svg>
       </div>
       <aside id="history-panel" aria-label="Move history">
@@ -1374,12 +1374,12 @@
       </aside>
     </div>
     <div id="controls">
-      <button id="undo" type="button" disabled>Undo</button>
-      <button id="reset" type="button">New Round</button>
-      <button id="reset-scores" type="button" aria-label="Reset score tally to zero">Reset Scores</button>
-      <button id="clear-all" type="button">Clear All</button>
-      <button id="change-names" type="button">Change Names</button>
-      <button id="audio-toggle" type="button" aria-label="Mute sound effects" aria-pressed="false"></button>
+      <button id="undo" type="button" disabled tabindex="10">Undo</button>
+      <button id="reset" type="button" tabindex="11">New Round</button>
+      <button id="reset-scores" type="button" aria-label="Reset score tally to zero" tabindex="12">Reset Scores</button>
+      <button id="clear-all" type="button" tabindex="13">Clear All</button>
+      <button id="change-names" type="button" tabindex="14">Change Names</button>
+      <button id="audio-toggle" type="button" aria-label="Mute sound effects" aria-pressed="false" tabindex="15"></button>
     </div>
   </main>
 
