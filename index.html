@@ -42,6 +42,7 @@
       --cell-hover: #e2e8f0;
       --winning-bg: rgba(22, 163, 74, 0.15);
       --winning-border: #16a34a;
+      --last-placed-ring: rgba(15, 23, 42, 0.45);
     }
 
     /* Classic theme (light) */
@@ -59,6 +60,7 @@
       --cell-hover: #e2e8f0;
       --winning-bg: rgba(22, 163, 74, 0.15);
       --winning-border: #16a34a;
+      --last-placed-ring: rgba(15, 23, 42, 0.45);
     }
 
     /* Ocean theme */
@@ -76,6 +78,7 @@
       --cell-hover: #1e5a7a;
       --winning-bg: rgba(6, 182, 212, 0.2);
       --winning-border: #06b6d4;
+      --last-placed-ring: rgba(224, 242, 254, 0.55);
     }
 
     /* Sunset theme */
@@ -93,6 +96,7 @@
       --cell-hover: #b45309;
       --winning-bg: rgba(249, 115, 22, 0.2);
       --winning-border: #f97316;
+      --last-placed-ring: rgba(254, 243, 199, 0.6);
     }
 
     /* Forest theme */
@@ -110,6 +114,7 @@
       --cell-hover: #40916c;
       --winning-bg: rgba(116, 198, 157, 0.2);
       --winning-border: #74c69d;
+      --last-placed-ring: rgba(255, 249, 196, 0.65);
     }
 
     html.dark-theme {
@@ -126,6 +131,7 @@
       --cell-hover: #273449;
       --winning-bg: rgba(34, 197, 94, 0.28);
       --winning-border: #22c55e;
+      --last-placed-ring: rgba(226, 232, 240, 0.5);
     }
 
     * { box-sizing: border-box; }
@@ -289,6 +295,11 @@
       }
     }
 
+    .cell.last-placed {
+      box-shadow: inset 0 0 0 2px var(--last-placed-ring);
+      transition: box-shadow 150ms ease;
+    }
+
     .cell.winning {
       background: var(--winning-bg);
       box-shadow: inset 0 0 0 2px var(--winning-border);
@@ -360,6 +371,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       .cell .mark { animation: none; }
+      .cell.last-placed { transition: none; }
     }
 
     #reset {
@@ -1363,6 +1375,7 @@
       let first_player_this_round = Math.random() < 0.5 ? 'X' : 'O';
       let current_player = first_player_this_round;
       let game_over = false;
+      let last_placed_cell_index = null;
       let score_x_wins = 0;
       let score_o_wins = 0;
       let score_draws = 0;
@@ -1415,6 +1428,7 @@
           current_player,
           first_player_this_round,
           game_over,
+          last_placed_cell_index,
           score_x_wins,
           score_o_wins,
           score_draws,
@@ -1464,6 +1478,11 @@
         current_player = parsed_game_state.current_player;
         first_player_this_round = parsed_game_state.first_player_this_round;
         game_over = parsed_game_state.game_over;
+        last_placed_cell_index = (
+          Number.isInteger(parsed_game_state.last_placed_cell_index) &&
+          parsed_game_state.last_placed_cell_index >= 0 &&
+          parsed_game_state.last_placed_cell_index < 9
+        ) ? parsed_game_state.last_placed_cell_index : null;
         score_x_wins = parsed_game_state.score_x_wins;
         score_o_wins = parsed_game_state.score_o_wins;
         score_draws = parsed_game_state.score_draws;
@@ -1491,7 +1510,7 @@
           const cell_button = board_cells[cell_index];
           const stored_mark = board_state[cell_index];
           cell_button.innerHTML = '';
-          cell_button.classList.remove('x', 'o', 'winning');
+          cell_button.classList.remove('x', 'o', 'winning', 'last-placed');
           cell_button.disabled = false;
           if (stored_mark === 'X' || stored_mark === 'O') {
             const mark_svg = stored_mark === 'X' ? create_x_mark_svg() : create_o_mark_svg();
@@ -1499,6 +1518,7 @@
             cell_button.classList.add(stored_mark.toLowerCase());
           }
         }
+        render_last_placed_ring();
         if (game_over) {
           const winning_result = detect_winner();
           if (winning_result) {
@@ -1903,9 +1923,13 @@
         const cell_element = board_cells[cell_index];
         board_state[cell_index] = '';
         cell_element.innerHTML = '';
-        cell_element.classList.remove('x', 'o', 'winning');
+        cell_element.classList.remove('x', 'o', 'winning', 'last-placed');
         cell_element.disabled = false;
         current_player = last_entry.player;
+        last_placed_cell_index = move_history.length > 0
+          ? move_history[move_history.length - 1].cell
+          : null;
+        render_last_placed_ring();
         render_status(`${get_display_name(current_player)}'s turn`);
         update_favicon();
         update_board_data_attributes();
@@ -1920,10 +1944,12 @@
 
         board_state[cell_index] = current_player;
         move_history.push({ cell: cell_index, player: current_player });
+        last_placed_cell_index = cell_index;
         event.currentTarget.textContent = '';
         const mark_svg = current_player === 'X' ? create_x_mark_svg() : create_o_mark_svg();
         event.currentTarget.appendChild(mark_svg);
         event.currentTarget.classList.add(current_player.toLowerCase());
+        render_last_placed_ring();
 
         play_click_sound();
         render_history();
@@ -1948,6 +1974,8 @@
           update_board_data_attributes();
           disable_remaining_cells();
           update_undo_button_state();
+          last_placed_cell_index = null;
+          render_last_placed_ring();
           save_game_state();
           trigger_confetti();
           play_win_sound();
@@ -1978,6 +2006,8 @@
           };
           board_element.addEventListener('animationend', remove_shake);
 
+          last_placed_cell_index = null;
+          render_last_placed_ring();
           save_game_state();
           play_draw_sound();
           show_game_over_modal('draw');
@@ -2045,6 +2075,16 @@
         reset_game();
       }
 
+      function render_last_placed_ring() {
+        for (let cell_iter_index = 0; cell_iter_index < board_cells.length; cell_iter_index += 1) {
+          board_cells[cell_iter_index].classList.remove('last-placed');
+        }
+        if (last_placed_cell_index !== null && !game_over) {
+          const target_cell = board_cells[last_placed_cell_index];
+          if (target_cell) target_cell.classList.add('last-placed');
+        }
+      }
+
       function reset_game() {
         const previous_round_was_complete = game_over;
         cleanup_confetti();
@@ -2056,6 +2096,7 @@
         first_player_this_round = Math.random() < 0.5 ? 'X' : 'O';
         current_player = first_player_this_round;
         game_over = false;
+        last_placed_cell_index = null;
         if (previous_round_was_complete) {
           round_count += 1;
           render_round_counter();
@@ -2064,7 +2105,7 @@
         current_player_was_winner = false;
         board_cells.forEach(cell => {
           cell.innerHTML = '';
-          cell.classList.remove('x', 'o', 'winning');
+          cell.classList.remove('x', 'o', 'winning', 'last-placed');
           cell.disabled = false;
         });
         render_status(`${get_display_name(first_player_this_round)}'s turn`);
