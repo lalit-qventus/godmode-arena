@@ -411,6 +411,15 @@
       cursor: default;
     }
 
+    .cell[aria-disabled="true"] {
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .cell[aria-disabled="true"]:not(.winning) {
+      opacity: 0.85;
+    }
+
     .cell.x { color: var(--x-color); }
     .cell.o { color: var(--o-color); }
 
@@ -1827,10 +1836,13 @@
           cell_button.innerHTML = '';
           cell_button.classList.remove('x', 'o', 'winning', 'last-placed');
           cell_button.disabled = false;
+          cell_button.removeAttribute('aria-disabled');
           if (stored_mark === 'X' || stored_mark === 'O') {
             const mark_svg = stored_mark === 'X' ? create_x_mark_svg() : create_o_mark_svg();
             cell_button.appendChild(mark_svg);
             cell_button.classList.add(stored_mark.toLowerCase());
+            cell_button.disabled = true;
+            cell_button.setAttribute('aria-disabled', 'true');
           }
         }
         render_last_placed_ring();
@@ -2288,6 +2300,7 @@
         cell_element.innerHTML = '';
         cell_element.classList.remove('x', 'o', 'winning', 'last-placed');
         cell_element.disabled = false;
+        cell_element.removeAttribute('aria-disabled');
         current_player = last_entry.player;
         last_placed_cell_index = move_history.length > 0
           ? move_history[move_history.length - 1].cell
@@ -2312,6 +2325,8 @@
         const mark_svg = current_player === 'X' ? create_x_mark_svg() : create_o_mark_svg();
         event.currentTarget.appendChild(mark_svg);
         event.currentTarget.classList.add(current_player.toLowerCase());
+        event.currentTarget.disabled = true;
+        event.currentTarget.setAttribute('aria-disabled', 'true');
         render_last_placed_ring();
 
         play_click_sound();
@@ -2472,6 +2487,7 @@
           cell.innerHTML = '';
           cell.classList.remove('x', 'o', 'winning', 'last-placed');
           cell.disabled = false;
+          cell.removeAttribute('aria-disabled');
         });
         render_status(`${get_display_name(first_player_this_round)}'s turn`);
         show_first_player_announcement(first_player_this_round);
