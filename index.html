@@ -191,6 +191,31 @@
       html, body { transition: none; }
     }
 
+    .skip-link {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translate(-50%, -150%);
+      background: var(--accent);
+      color: var(--accent-fg);
+      padding: 0.5rem 1rem;
+      border-radius: 0 0 0.5rem 0.5rem;
+      text-decoration: none;
+      font-weight: 600;
+      z-index: 9999;
+      transition: transform 150ms ease-out;
+    }
+
+    .skip-link:focus {
+      transform: translate(-50%, 0);
+      outline: 2px solid var(--accent-fg);
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .skip-link { transition: none; }
+    }
+
     main {
       display: flex;
       flex-direction: column;
@@ -1244,6 +1269,7 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#board">Skip to game</a>
   <canvas id="confetti-canvas"></canvas>
   <div id="theme-selector" aria-label="Theme selector">
     <button class="theme-button active" data-theme="classic" aria-label="Classic theme">C</button>
@@ -1307,7 +1333,7 @@
       <label for="timer-toggle">Turn Timer</label>
     </div>
     <div id="game-area">
-      <div id="board" role="grid" aria-label="Tic-tac-toe board">
+      <div id="board" role="grid" aria-label="Tic-tac-toe board" tabindex="-1">
         <button class="cell" data-index="0" aria-label="Cell 1"></button>
         <button class="cell" data-index="1" aria-label="Cell 2"></button>
         <button class="cell" data-index="2" aria-label="Cell 3"></button>
