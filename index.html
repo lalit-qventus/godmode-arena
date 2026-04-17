@@ -2206,7 +2206,10 @@
       document.addEventListener('keydown', (key_event) => {
         if (game_over_modal.hidden) return;
         if (!help_overlay.hidden) return;
-        if (key_event.key === 'Escape' || key_event.key === 'Enter') {
+        if (key_event.key === 'Escape') {
+          key_event.preventDefault();
+          close_game_over_modal();
+        } else if (key_event.key === 'Enter') {
           key_event.preventDefault();
           handle_play_again();
         } else if (key_event.key === 'Tab') {
