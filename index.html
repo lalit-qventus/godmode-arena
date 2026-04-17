@@ -962,6 +962,99 @@
     @media (prefers-reduced-motion: reduce) {
       #help-overlay, #help-overlay .help-content { transition: none; }
     }
+
+    @media print {
+      @page { margin: 0.5in; }
+
+      #confetti-canvas,
+      #theme-selector,
+      #theme-toggle,
+      #player-names-modal,
+      #game-over-modal,
+      #help-overlay,
+      h1,
+      #round-counter,
+      #streakboard,
+      #timer-display,
+      #first-player-announcement,
+      #timer-controls,
+      #history-panel,
+      #controls {
+        display: none !important;
+      }
+
+      html, body {
+        background: #fff !important;
+        color: #000 !important;
+      }
+      main {
+        margin: 0 auto !important;
+        padding: 0 !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        max-width: none !important;
+        width: auto !important;
+      }
+
+      #scoreboard {
+        background: transparent !important;
+        border: none !important;
+        color: #000 !important;
+        justify-content: center !important;
+        margin: 0 auto 0.5rem !important;
+        padding: 0 !important;
+      }
+      #scoreboard .score-x,
+      #scoreboard .score-o,
+      #scoreboard .score-draws { color: #000 !important; }
+
+      #turn-row {
+        justify-content: center !important;
+        margin: 0 auto 0.75rem !important;
+      }
+      #status {
+        background: transparent !important;
+        color: #000 !important;
+        text-align: center !important;
+      }
+
+      #game-area {
+        display: block !important;
+        margin: 0 auto !important;
+      }
+      #board {
+        margin: 0 auto !important;
+        background: #fff !important;
+        border: 1px solid #000 !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .cell {
+        background: #fff !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+      }
+      .cell.x, .cell.o { color: #000 !important; }
+      .cell.winning {
+        background: #fff !important;
+        box-shadow: inset 0 0 0 2px #000 !important;
+      }
+      .cell.last-placed { box-shadow: none !important; }
+      .cell::before, .cell::after { content: none !important; }
+
+      .cell svg { color: #000 !important; }
+      .cell svg.x-mark path,
+      .cell svg.o-mark circle {
+        stroke: #000 !important;
+        fill: none !important;
+        stroke-dasharray: none !important;
+        stroke-dashoffset: 0 !important;
+        animation: none !important;
+      }
+    }
   </style>
 </head>
 <body>
