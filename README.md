@@ -20,3 +20,7 @@ Two players take turns placing marks on a 3x3 grid. Each round, the first player
 ## Offline / installable
 
 Tic-Tac-Toe ships as a Progressive Web App. `manifest.webmanifest` declares the app shell and icons, and `sw.js` precaches `index.html`, the manifest, and both icons on first visit. After that first load the board, reset, and full gameplay work offline — pull the network and hard-reload to verify. Chromium-based browsers will surface an "Install" affordance so the game can be added to the home screen and launched standalone.
+
+## Sharing
+
+Social-share preview uses `og-image.png` at the repo root (1200x630). The `og:url` value in `index.html` is a placeholder (`https://example.com/tic-tac-toe/`) and must be swapped to the real deployed URL at deploy time.
