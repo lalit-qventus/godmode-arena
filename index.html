@@ -2125,6 +2125,14 @@
         pop_target.classList.add('score-pop');
       }
 
+      function handle_score_pop_end(animation_event) {
+        if (animation_event.animationName === 'score-pop') {
+          animation_event.currentTarget.classList.remove('score-pop');
+        }
+      }
+      score_x_element.addEventListener('animationend', handle_score_pop_end);
+      score_o_element.addEventListener('animationend', handle_score_pop_end);
+
       function render_streakboard() {
         current_streak_element.classList.remove('current-streak-x', 'current-streak-o', 'current-streak-none');
         if (current_streak_count === 0 || current_streak_player === null) {
