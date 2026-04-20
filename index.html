@@ -469,6 +469,11 @@
       opacity: 0.85;
     }
 
+    .cell:focus-visible {
+      outline: 3px solid var(--fg);
+      outline-offset: -3px;
+    }
+
     .cell.x { color: var(--x-color); }
     .cell.o { color: var(--o-color); }
 
@@ -602,6 +607,7 @@
 
     #reset:hover { background: var(--accent-hover); }
     #reset:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+    #clear-all:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
     #reset-scores {
       background: transparent;
